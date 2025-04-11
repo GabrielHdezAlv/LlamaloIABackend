@@ -1,0 +1,6 @@
+@ProyectoLlamaloIA.Backend_HostAddress = http://localhost:5227
+
+GET {{ProyectoLlamaloIA.Backend_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
