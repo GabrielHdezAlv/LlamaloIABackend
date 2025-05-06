@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using System.Security.Claims;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using Google.Cloud.Firestore;
 
@@ -20,7 +21,8 @@ public class UserController : ControllerBase
         try
         {
             // Obtener el UID del usuario autenticado a partir del token JWT
-            string userId = User.Claims.FirstOrDefault(c => c.Type == "user_id")?.Value;
+            string userId = User.FindFirst("user_id")?.Value ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? User.FindFirst("sub")?.Value;
+
 
             if (string.IsNullOrEmpty(userId))
                 return Unauthorized(new { message = "Token inválido o expirado" });

@@ -83,7 +83,7 @@ public class AuthController : ControllerBase
 
         return Ok(new
         {
-            message = "Usuario registrado correctamente.",
+            Token = firebaseResponse.idToken,
             UserId = firebaseResponse.localId
         });
     }
@@ -133,7 +133,7 @@ public class AuthController : ControllerBase
     {
         var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         var email = User.FindFirst(ClaimTypes.Email)?.Value;
-
+        
         if (string.IsNullOrEmpty(userId))
         {
             return Unauthorized(new { message = "No se pudo obtener el usuario autenticado." });
