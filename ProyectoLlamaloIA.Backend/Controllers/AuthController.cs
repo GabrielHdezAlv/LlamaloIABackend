@@ -66,7 +66,8 @@ public class AuthController : ControllerBase
             lastname = request.lastname,
             email = request.email,
             password = hashedPassword, // 🔐 Guardamos la contraseña cifrada
-            created_at = DateTime.UtcNow
+            created_at = DateTime.UtcNow,
+            twilio = new TwilioInfo("", 0, "", "")
         };
 
         _userRepository.Add(newUser);
