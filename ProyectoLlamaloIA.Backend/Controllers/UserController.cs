@@ -42,7 +42,8 @@ public class UserController : ControllerBase
                 name = userData["name"],
                 lastname = userData["lastname"],
                 email = userData["email"],
-                createdAt = userData["createdAt"]
+                createdAt = userData["createdAt"],
+                twilio = userData["twilio"],
             });
         }
         catch (Exception ex)
