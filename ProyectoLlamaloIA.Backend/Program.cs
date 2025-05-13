@@ -85,6 +85,7 @@ builder.Services
 
 builder.Services.AddAuthorization();
 builder.Services.AddControllers();
+builder.Services.AddHttpClient();
 
 // 🔹 Agregar Swagger con autenticación JWT
 builder.Services.AddEndpointsApiExplorer();
