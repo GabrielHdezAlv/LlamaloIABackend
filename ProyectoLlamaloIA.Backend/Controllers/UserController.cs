@@ -44,6 +44,7 @@ public class UserController : ControllerBase
                 email = userData["email"],
                 createdAt = userData["createdAt"],
                 twilio = userData["twilio"],
+                agent = userData["agent"],
             });
         }
         catch (Exception ex)

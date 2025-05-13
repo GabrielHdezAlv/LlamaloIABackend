@@ -16,7 +16,7 @@ public class AgentsController : ControllerBase
         _logger = logger;
     }
 
-    [HttpGet("allAgents")]
+    [HttpGet("/agents/allAgents")]
     [Authorize]
     public async Task<IActionResult> GetAllAgents()
     {

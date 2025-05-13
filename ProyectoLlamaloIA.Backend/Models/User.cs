@@ -22,4 +22,8 @@ public class User : FirebaseDocument
 
     [FirestoreProperty("twilioInfo")]
     public TwilioInfo twilio { get; set; }
+    
+    [FirestoreProperty("agent")]
+    public Agent agent { get; set; }
+    
 }

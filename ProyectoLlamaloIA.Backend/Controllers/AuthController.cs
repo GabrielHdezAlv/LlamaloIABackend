@@ -58,6 +58,13 @@ public class AuthController : ControllerBase
         // 🔹 Hasheamos la contraseña ANTES de guardarla en Firestore
         string hashedPassword = PasswordHasher.HashPassword(request.password);
 
+        // Obtenemos el primer agente de la lista de agentes
+        CollectionReference agentsRef = _firestoreDb.Collection("agents");
+        QuerySnapshot snapshot = await agentsRef.Limit(1).GetSnapshotAsync();
+        
+        DocumentSnapshot firstAgentDoc = snapshot.Documents[0];
+        Agent firstAgent = firstAgentDoc.ConvertTo<Agent>();
+
         // 🔹 Guardamos en Firestore con el mismo ID que Firebase Auth
         User newUser = new User
         {
@@ -67,7 +74,8 @@ public class AuthController : ControllerBase
             email = request.email,
             password = hashedPassword, // 🔐 Guardamos la contraseña cifrada
             created_at = DateTime.UtcNow,
-            twilio = new TwilioInfo("", 0, "", "")
+            twilio = new TwilioInfo("", 0, "", ""),
+            agent = firstAgent
         };
 
         _userRepository.Add(newUser);
