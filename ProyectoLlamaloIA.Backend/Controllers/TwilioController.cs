@@ -133,29 +133,44 @@ public class TwilioController : ControllerBase
         {
             // Obtener el UID del usuario autenticado
             string userId = User.FindFirst("user_id")?.Value ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? User.FindFirst("sub")?.Value;
+    
             if (string.IsNullOrEmpty(userId))
+            {
                 return Unauthorized(new { message = "Token inválido o expirado" });
+            }
 
             // Obtener la referencia al documento del usuario en la colección "users"
             DocumentReference userDocRef = _firestoreDb.Collection("users").Document(userId);
+    
+            // Intentar obtener el documento del usuario
+            DocumentSnapshot userSnapshot = await userDocRef.GetSnapshotAsync();
 
-            // Intentar obtener la configuración de Twilio del usuario
-            DocumentReference twilioDocRef = userDocRef.Collection("twilio").Document("config");
-            DocumentSnapshot twilioSnapshot = await twilioDocRef.GetSnapshotAsync();
+            if (!userSnapshot.Exists)
+            {
+                return NotFound(new { message = "Usuario no encontrado." });
+            }
 
-            if (!twilioSnapshot.Exists)
+            // Intentar obtener la configuración de Twilio
+            if (!userSnapshot.TryGetValue<object>("twilio", out var twilio))
             {
                 return NotFound(new { message = "Configuración de Twilio no encontrada para el usuario." });
             }
 
+            // Deserializar la configuración de Twilio si es un Dictionary o JObject (según la estructura que devuelva Firestore)
+            var twilioConfig = twilio as Dictionary<string, object>;
+            if (twilioConfig == null)
+            {
+                return BadRequest(new { message = "Formato de configuración de Twilio incorrecto." });
+            }
+
             // Si existe, devolver la configuración de Twilio
-            var twilioConfig = twilioSnapshot.ToDictionary();
             return Ok(twilioConfig);
         }
         catch (Exception ex)
         {
             return BadRequest(new { message = "Error al obtener la configuración de Twilio", error = ex.Message });
         }
+
     }
     
     private async Task<bool> ValidateTwilioCredentialsAsync(string sid, string token)
