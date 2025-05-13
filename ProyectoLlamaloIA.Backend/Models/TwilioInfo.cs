@@ -16,13 +16,17 @@ public class TwilioInfo
 
     [FirestoreProperty("twilioToken")]
     public string TwilioToken { get; set; }
+    
+    [FirestoreProperty("firstInteraction")]
+    public string? FirstInteraction { get; set; }
 
     // Constructor para inicializar las propiedades de TwilioInfo
-    public TwilioInfo(string countryCode, long phoneNumber, string twilioSid, string twilioToken)
+    public TwilioInfo(string countryCode, long phoneNumber, string twilioSid, string twilioToken, string firstInteraction)
     {
         CountryCode = countryCode;
         PhoneNumber = phoneNumber;
         TwilioSid = twilioSid;
         TwilioToken = twilioToken;
+        FirstInteraction = firstInteraction;
     }
 }
