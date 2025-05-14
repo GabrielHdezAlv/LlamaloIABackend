@@ -96,7 +96,7 @@ public class AgentsController : ControllerBase
                 userAgentConfig["photoUrl"] = agentConfig.PhotoUrl;
                 _logger.LogInformation("Actualizando la foto del agente para el usuario: {UserId}", userId);
             }
-            if (userAgentConfig["language"]?.ToString() != agentConfig.Language)
+            if (userAgentConfig["language"] != agentConfig.Language)
             {
                 userAgentConfig["language"] = agentConfig.Language;
                 _logger.LogInformation("Actualizando el idioma del agente para el usuario: {UserId}", userId);
