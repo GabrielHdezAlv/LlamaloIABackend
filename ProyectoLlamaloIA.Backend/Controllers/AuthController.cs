@@ -9,7 +9,7 @@ using ProyectoLlamaloIA.Backend.Models;
 using ProyectoLlamaloIA.Backend.Repository;
 using ProyectoLlamaloIA.Backend.Utils;
 
-[Route("api/auth")]
+[Route("auth")]
 [ApiController]
 public class AuthController : ControllerBase
 {
