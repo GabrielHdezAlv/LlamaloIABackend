@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using Google.Cloud.Firestore;
 
-[Route("api/user")]
+[Route("user")]
 [ApiController]
 public class UserController : ControllerBase
 {

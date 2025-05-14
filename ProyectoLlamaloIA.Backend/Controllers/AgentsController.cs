@@ -6,6 +6,8 @@ using ProyectoLlamaloIA.Backend.Models;
 
 namespace ProyectoLlamaloIA.Backend.Controllers;
 
+[Route("agents")]
+[ApiController]
 public class AgentsController : ControllerBase
 {
     private readonly FirestoreDb _firestoreDb;
@@ -17,7 +19,7 @@ public class AgentsController : ControllerBase
         _logger = logger;
     }
 
-    [HttpGet("/agents/allAgents")]
+    [HttpGet("allAgents")]
     [Authorize]
     public async Task<IActionResult> GetAllAgents()
     {
@@ -53,7 +55,7 @@ public class AgentsController : ControllerBase
         }
     }
     
-    [HttpPost("/agents/agentConfig")]
+    [HttpPost("setAgentConfig")]
     [Authorize]
     public async Task<IActionResult> setAgentConfig([FromBody] Agent agentConfig)
          {

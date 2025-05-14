@@ -9,7 +9,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Google.Cloud.Firestore;
 
-[Route("api/twilio")]
+[Route("twilio")]
 [ApiController]
 public class TwilioController : ControllerBase
 {
