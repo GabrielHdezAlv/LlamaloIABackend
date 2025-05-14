@@ -6,22 +6,26 @@ namespace ProyectoLlamaloIA.Backend.Models;
 public class Agent
 {
     [FirestoreProperty("labsId")]
-    public string LasbId { get; set; }
+    public string LabsId { get; set; }
 
     [FirestoreProperty("name")]
     public string Name { get; set; }
 
     [FirestoreProperty("photoUrl")]
     public string PhotoUrl { get; set; }
+    
+    [FirestoreProperty("language")]
+    public string Language { get; set; }
 
     // Constructor sin parámetros para permitir que Firestore cree la instancia
     public Agent() { }
 
     // Constructor con parámetros (opcional, pero útil para instanciar manualmente)
-    public Agent(string labsId, string name, string photoUrl)
+    public Agent(string labsId, string name, string photoUrl, string language)
     {
-        LasbId = labsId;
+        LabsId = labsId;
         Name = name;
         PhotoUrl = photoUrl;
+        Language = language;
     }
 }
