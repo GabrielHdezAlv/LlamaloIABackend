@@ -15,13 +15,13 @@ public class Agent
     public string PhotoUrl { get; set; }
     
     [FirestoreProperty("language")]
-    public string Language { get; set; }
+    public Language Language { get; set; }
 
     // Constructor sin parámetros para permitir que Firestore cree la instancia
     public Agent() { }
 
     // Constructor con parámetros (opcional, pero útil para instanciar manualmente)
-    public Agent(string labsId, string name, string photoUrl, string language)
+    public Agent(string labsId, string name, string photoUrl, Language language)
     {
         LabsId = labsId;
         Name = name;
