@@ -122,8 +122,6 @@ public class TwilioController : ControllerBase
             return BadRequest(new { message = "Error al procesar la configuración de Twilio", error = ex.Message });
         }
     }
-
-
     
     [HttpGet("info")]
     [Authorize]
