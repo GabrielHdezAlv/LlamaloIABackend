@@ -145,15 +145,23 @@ builder.Services.AddSingleton<UserRepository>();
 var app = builder.Build();
 
 // 🔹 Habilitar Swagger en desarrollo
-if (app.Environment.IsDevelopment())
+/*if (app.Environment.IsDevelopment())
 {
-    app.UseSwagger();
-    app.UseSwaggerUI(c =>
-    {
-        c.SwaggerEndpoint("/swagger/v1/swagger.json", "Llamalo IO API v1");
-        c.RoutePrefix = string.Empty;
-    });
-}
+     app.UseSwagger();
+     app.UseSwaggerUI(c =>
+     {
+         c.SwaggerEndpoint("/swagger/v1/swagger.json", "Llamalo IO API v1");
+         c.RoutePrefix = string.Empty;
+     });
+ }*/
+
+// Habilitamos swagger en los dos entornos (Desarrollo y Publicado)
+app.UseSwagger();
+app.UseSwaggerUI(c =>
+{
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "Llamalo IO API v1");
+    c.RoutePrefix = string.Empty;
+});
 
 // app.UseHttpsRedirection();
 
