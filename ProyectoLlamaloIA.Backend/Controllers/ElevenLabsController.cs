@@ -18,7 +18,6 @@ public class ElevenLabsController : ControllerBase
     private readonly IConfiguration _configuration;
     
     private const string ApiKey = "sk_0f16002177bf557f9617b0dfc6ea0f5d23571031949145a5";
-    private const string VoiceId = "zRUArUmK0DWSP7K6mmLW";
 
     public ElevenLabsController(IHttpClientFactory httpClientFactory, FirestoreDb firestoreDb, ILogger<AgentsController> logger, IConfiguration configuration)
     {
@@ -51,7 +50,10 @@ public class ElevenLabsController : ControllerBase
 
             if (twilioConfig["firstInteraction"].ToString() != firstInteraction)
             {
-                var endpoint = $"https://api.elevenlabs.io/v1/text-to-speech/{VoiceId}";
+                // Verificar si el campo 'twilio' ya existe en el documento
+                var agentConfig = userSnapshot.GetValue<IDictionary<string, object>>("agent");
+                
+                var endpoint = $"https://api.elevenlabs.io/v1/text-to-speech/{agentConfig["labsId"]}";
 
                 var payload = new
                 {
@@ -132,7 +134,7 @@ public class ElevenLabsController : ControllerBase
                 return Ok(new { message = "Audio generado y URL guardada exitosamente.", audioUrl = publicUrl });
             }
 
-            return Ok(new { message = "El audio a generar tiene el mismo contenido que el ya realizado" });
+            return Ok(new { message = "Ya se ha generado un audio con este mismo texto. Por favor, modifica el mensaje antes de generar uno nuevo." });
         }
         catch (Exception ex)
         {
