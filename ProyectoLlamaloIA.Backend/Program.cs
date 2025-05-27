@@ -14,15 +14,29 @@ using Microsoft.IdentityModel.Logging;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// 📌 Verificar que el archivo de credenciales de Firebase existe
-string credentialPath = Path.Combine(Directory.GetCurrentDirectory(), "llamaloio-firebase-adminsdk-fbsvc-2884e73711.json");
+// 🔐 Verificar si estamos en Render (por la variable de entorno)
+var credentialsJson = Environment.GetEnvironmentVariable("GOOGLE_APPLICATION_CREDENTIALS_JSON");
 
-if (!File.Exists(credentialPath))
+string credentialPath;
+
+if (!string.IsNullOrWhiteSpace(credentialsJson))
 {
-    throw new FileNotFoundException($"❌ Archivo de credenciales no encontrado en: {credentialPath}");
+    // 👉 Estamos en Render u otro entorno cloud sin archivo físico
+    credentialPath = Path.GetTempFileName();
+    File.WriteAllText(credentialPath, credentialsJson);
+}
+else
+{
+    // 👉 Estamos en local
+    credentialPath = Path.Combine(Directory.GetCurrentDirectory(), "llamaloio-firebase-adminsdk-fbsvc-2884e73711.json");
+
+    if (!File.Exists(credentialPath))
+    {
+        throw new FileNotFoundException($"❌ Archivo de credenciales no encontrado en: {credentialPath}");
+    }
 }
 
-// 🔹 Inicializar Firebase si no ha sido creado aún
+// 🔥 Inicializar Firebase
 if (FirebaseApp.DefaultInstance == null)
 {
     FirebaseApp.Create(new AppOptions()
@@ -33,8 +47,8 @@ if (FirebaseApp.DefaultInstance == null)
 
 // 🔹 Inicializar Firestore
 Environment.SetEnvironmentVariable("GOOGLE_APPLICATION_CREDENTIALS", credentialPath);
-var firestoreDb = FirestoreDb.Create("llamaloio"); // 🔹 Reemplaza con tu ID de Firebase
-builder.Services.AddSingleton(firestoreDb);
+var firestoreDb = FirestoreDb.Create("llamaloio");
+builder.Services.AddSingleton(firestoreDb); 
 
 // 🔹 Habilitar CORS para permitir peticiones desde el frontend (Ejemplo: Angular, React)
 var corsPolicy = "AllowFrontend";
