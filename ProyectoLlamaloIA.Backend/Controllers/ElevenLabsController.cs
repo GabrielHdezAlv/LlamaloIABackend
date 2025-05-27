@@ -5,7 +5,6 @@ using Google.Cloud.Firestore;
 using Google.Cloud.Storage.V1;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using ProyectoLlamaloIA.Backend.Models;
 
 namespace ProyectoLlamaloIA.Backend.Controllers;
 
@@ -31,12 +30,12 @@ public class ElevenLabsController : ControllerBase
     
     [HttpPost("setFirstInteraction")]
     [Authorize]
-    public async Task<IActionResult> setFirstInteraction([FromBody] string firstInteraction)
+    public async Task<IActionResult> SetFirstInteraction([FromBody] string firstInteraction)
          {
         try
         {
             // Obtener el UID del usuario autenticado
-            string userId = User.FindFirst("user_id")?.Value ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? User.FindFirst("sub")?.Value;
+            string? userId = User.FindFirst("user_id")?.Value ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? User.FindFirst("sub")?.Value;
             if (string.IsNullOrEmpty(userId))
                 return Unauthorized(new { message = "Token inválido o expirado" });
 
@@ -50,7 +49,7 @@ public class ElevenLabsController : ControllerBase
             // Verificar si el campo 'twilio' ya existe en el documento
             var twilioConfig = userSnapshot.GetValue<IDictionary<string, object>>("twilio");
 
-            if (twilioConfig["firstInteraction"]?.ToString() != firstInteraction)
+            if (twilioConfig["firstInteraction"].ToString() != firstInteraction)
             {
                 var endpoint = $"https://api.elevenlabs.io/v1/text-to-speech/{VoiceId}";
 
