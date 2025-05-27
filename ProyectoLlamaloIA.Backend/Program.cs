@@ -155,7 +155,7 @@ if (app.Environment.IsDevelopment())
     });
 }
 
-app.UseHttpsRedirection();
+// app.UseHttpsRedirection();
 
 // 🔹 Aplicar CORS antes de la autenticación
 app.UseCors(corsPolicy);
