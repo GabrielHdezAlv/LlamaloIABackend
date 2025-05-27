@@ -151,4 +151,9 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+
+// 🔧 Escuchar en el puerto definido por Render (variable de entorno PORT)
+var port = Environment.GetEnvironmentVariable("PORT") ?? "7027";
+app.Urls.Add($"http://*:{port}");
+
 app.Run();
