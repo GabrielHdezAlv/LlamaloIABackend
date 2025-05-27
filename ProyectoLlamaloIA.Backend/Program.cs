@@ -178,4 +178,6 @@ app.MapControllers();
 var port = Environment.GetEnvironmentVariable("PORT") ?? "7027";
 app.Urls.Add($"http://*:{port}");
 
+app.MapGet("/ping", () => Results.Ok("pong"));
+
 app.Run();
