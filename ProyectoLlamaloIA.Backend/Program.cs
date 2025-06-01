@@ -54,14 +54,13 @@ builder.Services.AddSingleton(firestoreDb);
 var corsPolicy = "AllowFrontend";
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy(corsPolicy,
-        policy =>
-        {
-            policy.WithOrigins("http://localhost:4200", "https://app.llamalo.ai") // Permite solo el frontend local (cámbialo si es necesario)
-                  .AllowAnyHeader() // Permitir cualquier header (Content-Type, Authorization, etc.)
-                  .AllowAnyMethod() // Permitir métodos como GET, POST, PUT, DELETE
-                  .AllowCredentials(); // Permitir credenciales (Tokens JWT)
-        });
+    options.AddPolicy(corsPolicy, policy =>
+    {
+        policy.WithOrigins("https://app.llamalo.ai")  // Solo el origen exacto
+            .AllowAnyHeader()
+            .AllowAnyMethod()
+            .AllowCredentials();
+    });
 });
 
 // 🔹 Configurar autenticación con Firebase JWT
