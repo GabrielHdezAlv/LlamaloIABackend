@@ -22,6 +22,11 @@ public class TwilioController : ControllerBase
         _logger = logger;
     }
 
+    protected TwilioController()
+    {
+        throw new NotImplementedException();
+    }
+
     [HttpPost("config")]
     [Authorize]
     public async Task<IActionResult> SetTwilioConfig([FromBody] TwilioInfo config)
