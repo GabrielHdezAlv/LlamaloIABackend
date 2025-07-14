@@ -56,7 +56,7 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy(corsPolicy, policy =>
     {
-        policy.WithOrigins("https://app.llamalo.ai")  // Solo el origen exacto
+        policy.WithOrigins("https://app.llamalo.ai","http://localhost:4200")  // Solo el origen exacto
             .AllowAnyHeader()
             .AllowAnyMethod()
             .AllowCredentials();
