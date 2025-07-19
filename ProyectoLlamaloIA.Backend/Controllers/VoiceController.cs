@@ -35,6 +35,34 @@ public class VoiceController : ControllerBase
         _logger = logger;
     }
     
+    private static string NormalizeNumber(string number) =>
+        number?.Replace("+", "").Replace(" ", "").Replace("-", "").Trim() ?? "";
+    
+    private static DocumentSnapshot? FindAgentByPhone(IEnumerable<DocumentSnapshot> docs, string targetNumber)
+    {
+        var normalizedTarget = NormalizeNumber(targetNumber);
+
+        foreach (var doc in docs)
+        {
+            if (doc.TryGetValue<Dictionary<string, object>>("twilio", out var twilioData))
+            {
+                if (twilioData.TryGetValue("countryCode", out var countryCodeObj) &&
+                    twilioData.TryGetValue("phoneNumber", out var phoneNumberObj))
+                {
+                    var fullNumber = $"{countryCodeObj}{phoneNumberObj}";
+                    var normalizedFullNumber = NormalizeNumber(fullNumber);
+
+                    if (normalizedFullNumber == normalizedTarget)
+                    {
+                        return doc;
+                    }
+                }
+            }
+        }
+
+        return null;
+    }
+    
     // Paso 1: llamada entrante
     [HttpPost("incoming")]
     public async Task<IActionResult> IncomingCall([FromForm] string To)
@@ -42,9 +70,6 @@ public class VoiceController : ControllerBase
         _logger.LogInformation("📞 Llamada entrante detectada. Número marcado: {To}", To);
 
         var response = new VoiceResponse();
-
-        // Normalizar número recibido para comparar sin +, espacios ni guiones
-        string NormalizeNumber(string number) => number?.Replace("+", "").Replace(" ", "").Replace("-", "").Trim() ?? "";
 
         var normalizedTo = NormalizeNumber(To);
 
@@ -89,13 +114,17 @@ public class VoiceController : ControllerBase
     
     // Paso 2: grabar al usuario
     [HttpPost("record")]
-    public IActionResult RecordUser()
+    public IActionResult RecordUser([FromForm] string? To, [FromQuery] string? ToQuery)
     {
-        var response = new VoiceResponse();
+        To ??= ToQuery;
 
+        var response = new VoiceResponse();
         response.Say("Puedes empezar a hablar después del tono. Presiona cualquier tecla para finalizar.");
+
+        var processUrl = new Uri($"/voice/process?To={Uri.EscapeDataString(To)}", UriKind.Relative);
+
         response.Record(
-            action: new Uri("/voice/process", UriKind.Relative),
+            action: processUrl,
             method: "POST",
             maxLength: 30,
             finishOnKey: "#",
@@ -106,18 +135,17 @@ public class VoiceController : ControllerBase
     
     // Paso 3: procesar audio y responder
     [HttpPost("process")]
-    public async Task<IActionResult> ProcessUser([FromForm] string RecordingUrl, [FromForm] string To)
+    public async Task<IActionResult> ProcessUser([FromForm] string RecordingUrl, [FromForm] string? To, [FromQuery] string? ToQuery)
     {
+        To ??= ToQuery;
         var response = new VoiceResponse();
 
         // Obtener agente
         var agentsRef = _firestore.Collection("users");
         var snapshot = await agentsRef.GetSnapshotAsync();
 
-        DocumentSnapshot? matchingDoc = snapshot.Documents.FirstOrDefault(doc =>
-            doc.TryGetValue<Dictionary<string, object>>("twilio", out var twilioData)
-            && twilioData.TryGetValue("number", out var number)
-            && number.ToString() == To);
+        var normalizedTo = NormalizeNumber(To);
+        var matchingDoc = FindAgentByPhone(snapshot.Documents, normalizedTo);
 
         if (matchingDoc == null)
         {
