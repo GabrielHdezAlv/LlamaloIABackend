@@ -10,7 +10,7 @@ namespace ProyectoLlamaloIA.Backend.Controllers;
 
 [Route("voice")]
 [ApiController]
-public class VoiceController : TwilioController
+public class VoiceController : ControllerBase
 {
     private readonly FirestoreDb _firestore;
     private readonly FirebaseService _firebaseService;
