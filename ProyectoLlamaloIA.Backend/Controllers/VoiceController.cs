@@ -39,6 +39,8 @@ public class VoiceController : TwilioController
     [HttpPost("incoming")]
     public async Task<IActionResult> IncomingCall([FromForm] string To)
     {
+        _logger.LogInformation("📞 Llamada entrante detectada. Número marcado: {To}", To);
+
         var response = new VoiceResponse();
 
         // Buscar agente por número
