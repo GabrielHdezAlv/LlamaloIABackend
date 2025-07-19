@@ -40,6 +40,8 @@ else
 // 🔥 Inicializar Firebase
 if (FirebaseApp.DefaultInstance == null)
 {
+    builder.Configuration["Firebase:CredentialsPath"] = credentialPath;
+    
     FirebaseApp.Create(new AppOptions()
     {
         Credential = GoogleCredential.FromFile(credentialPath)
