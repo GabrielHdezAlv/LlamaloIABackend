@@ -11,6 +11,7 @@ using ProyectoLlamaloIA.Backend.Repository;
 using System.IO;
 using Google.Cloud.Firestore;
 using Microsoft.IdentityModel.Logging;
+using ProyectoLlamaloIA.Backend.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -139,6 +140,10 @@ builder.Services.AddSwaggerGen(c =>
 
 // 🔹 Inyección de dependencias (Repositories)
 builder.Services.AddSingleton<UserRepository>();
+builder.Services.AddScoped<FirebaseService>();
+builder.Services.AddScoped<DeepgramService>();
+builder.Services.AddScoped<GPTService>();
+builder.Services.AddScoped<ElevenLabsService>();
 //builder.Services.AddSingleton<TaskRepository>(); // 🔹 Inyectar el repositorio de tareas
 
 var app = builder.Build();
