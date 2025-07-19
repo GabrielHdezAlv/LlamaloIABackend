@@ -43,14 +43,34 @@ public class VoiceController : ControllerBase
 
         var response = new VoiceResponse();
 
-        // Buscar agente por número
+        // Normalizar número recibido para comparar sin +, espacios ni guiones
+        string NormalizeNumber(string number) => number?.Replace("+", "").Replace(" ", "").Replace("-", "").Trim() ?? "";
+
+        var normalizedTo = NormalizeNumber(To);
+
         var agentsRef = _firestore.Collection("users");
         var snapshot = await agentsRef.GetSnapshotAsync();
 
-        DocumentSnapshot? matchingDoc = snapshot.Documents.FirstOrDefault(doc =>
-            doc.TryGetValue<Dictionary<string, object>>("twilio", out var twilioData)
-            && twilioData.TryGetValue("number", out var number)
-            && number.ToString() == To);
+        DocumentSnapshot? matchingDoc = null;
+
+        foreach (var doc in snapshot.Documents)
+        {
+            if (doc.TryGetValue<Dictionary<string, object>>("twilio", out var twilioData))
+            {
+                if (twilioData.TryGetValue("countryCode", out var countryCodeObj) &&
+                    twilioData.TryGetValue("phoneNumber", out var phoneNumberObj))
+                {
+                    var fullNumber = $"{countryCodeObj}{phoneNumberObj}";
+                    var normalizedFullNumber = NormalizeNumber(fullNumber);
+
+                    if (normalizedFullNumber == normalizedTo)
+                    {
+                        matchingDoc = doc;
+                        break;
+                    }
+                }
+            }
+        }
 
         if (matchingDoc == null)
         {
