@@ -55,4 +55,41 @@ public class DeepgramService
             return "";
         }
     }
+    
+    public async Task<string> TranscribeFromStreamAsync(Stream audioStream)
+    {
+        var requestUrl = "https://api.deepgram.com/v1/listen?language=es&punctuate=true";
+
+        var content = new StreamContent(audioStream);
+        content.Headers.ContentType = new MediaTypeHeaderValue("audio/mpeg"); // Asegúrate de usar el tipo correcto
+
+        var response = await _httpClient.PostAsync(requestUrl, content);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            var error = await response.Content.ReadAsStringAsync();
+            _logger.LogError("Deepgram error: {Error}", error);
+            return "No se pudo transcribir el audio.";
+        }
+
+        var json = await response.Content.ReadAsStringAsync();
+        using var doc = JsonDocument.Parse(json);
+
+        try
+        {
+            var transcript = doc.RootElement
+                .GetProperty("results")
+                .GetProperty("channels")[0]
+                .GetProperty("alternatives")[0]
+                .GetProperty("transcript")
+                .GetString();
+
+            return transcript ?? "";
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error al parsear transcripción Deepgram");
+            return "";
+        }
+    }
 }
