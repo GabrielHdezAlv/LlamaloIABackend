@@ -18,6 +18,7 @@ public class VoiceController : ControllerBase
     private readonly GPTService _gptService;
     private readonly ElevenLabsService _elevenService;
     private readonly ILogger<VoiceController> _logger;
+    private readonly HttpClient  _httpClient;
     
     public VoiceController(
         FirestoreDb firestore,
@@ -25,7 +26,8 @@ public class VoiceController : ControllerBase
         DeepgramService deepgramService,
         GPTService gptService,
         ElevenLabsService elevenService,
-        ILogger<VoiceController> logger)
+        ILogger<VoiceController> logger,
+        HttpClient httpClient)
     {
         _firestore = firestore;
         _firebaseService = firebaseService;
@@ -33,6 +35,7 @@ public class VoiceController : ControllerBase
         _gptService = gptService;
         _elevenService = elevenService;
         _logger = logger;
+        _httpClient = httpClient;
     }
     
     private static string NormalizeNumber(string number) =>
@@ -156,7 +159,8 @@ public class VoiceController : ControllerBase
         var agent = matchingDoc.ConvertTo<AgentConfig>();
 
         // Transcribir
-        var transcript = await _deepgramService.TranscribeFromUrlAsync(RecordingUrl);
+        using var recordingStream = await _httpClient.GetStreamAsync(RecordingUrl);
+        var transcript = await _deepgramService.TranscribeFromStreamAsync(recordingStream);
 
         // Detectar intención de terminar
         if (transcript.ToLower().Contains("gracias") || transcript.ToLower().Contains("ya está") || transcript.ToLower().Contains("eso es todo"))
