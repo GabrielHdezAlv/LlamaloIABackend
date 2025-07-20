@@ -159,8 +159,16 @@ public class VoiceController : ControllerBase
         var agent = matchingDoc.ConvertTo<AgentConfig>();
         
         // Autenticarse con Twilio para descargar grabación protegida
-        var twilioSid = agent.Twilio["accountSid"].ToString();
-        var twilioToken = agent.Twilio["authToken"].ToString();
+        if (!agent.Twilio.TryGetValue("twilioSid", out var accountSidObj) ||
+            !agent.Twilio.TryGetValue("twilioToken", out var authTokenObj))
+        {
+            _logger.LogError("❌ Faltan las credenciales de Twilio en Firestore.");
+            response.Say("Error de configuración del agente. No se pudo continuar.");
+            return Content(response.ToString(), "application/xml");
+        }
+
+        var twilioSid = accountSidObj.ToString();
+        var twilioToken = authTokenObj.ToString();
 
         var byteArray = System.Text.Encoding.ASCII.GetBytes($"{twilioSid}:{twilioToken}");
         _httpClient.DefaultRequestHeaders.Authorization =
