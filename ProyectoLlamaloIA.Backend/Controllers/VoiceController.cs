@@ -157,6 +157,14 @@ public class VoiceController : ControllerBase
         }
 
         var agent = matchingDoc.ConvertTo<AgentConfig>();
+        
+        // Autenticarse con Twilio para descargar grabación protegida
+        var twilioSid = agent.Twilio["accountSid"].ToString();
+        var twilioToken = agent.Twilio["authToken"].ToString();
+
+        var byteArray = System.Text.Encoding.ASCII.GetBytes($"{twilioSid}:{twilioToken}");
+        _httpClient.DefaultRequestHeaders.Authorization =
+            new System.Net.Http.Headers.AuthenticationHeaderValue("Basic", Convert.ToBase64String(byteArray));
 
         // Transcribir
         using var recordingStream = await _httpClient.GetStreamAsync(RecordingUrl);
