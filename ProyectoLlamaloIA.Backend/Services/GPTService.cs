@@ -24,7 +24,7 @@ public class GPTService
 
         var requestBody = new
         {
-            model = "ftjob-xHPscMlXPBk13j0WaN1yGiYh",
+            model = "ft:gpt-3.5-turbo-1106:llamalo:llamalo-ai-beta-v1:BJ0wvqjK",
             messages = new[]
             {
                 new { role = "user", content = userInput }
