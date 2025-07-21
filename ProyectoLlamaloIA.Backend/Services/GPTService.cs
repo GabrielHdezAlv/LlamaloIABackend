@@ -18,16 +18,15 @@ public class GPTService
         _logger = logger;
     }
     
-    public async Task<string> GetReply(string agentPrompt, string userInput)
+    public async Task<string> GetReply(string userInput)
     {
         var requestUrl = "https://api.openai.com/v1/chat/completions";
 
         var requestBody = new
         {
-            model = "ft:gpt-3.5-turbo:tu-org-id:modelo-llamalo", // Reemplaza con tu modelo fine-tuned
+            model = "ftjob-xHPscMlXPBk13j0WaN1yGiYh",
             messages = new[]
             {
-                new { role = "system", content = agentPrompt },
                 new { role = "user", content = userInput }
             },
             temperature = 0.7

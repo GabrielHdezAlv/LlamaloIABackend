@@ -186,8 +186,7 @@ public class VoiceController : ControllerBase
         }
 
         // Generar respuesta IA
-        var prompt = agent.Agent["prompt"].ToString();
-        var reply = await _gptService.GetReply(prompt, transcript);
+        var reply = await _gptService.GetReply(transcript);
 
         // Generar audio
         var audioStream = await _elevenService.GenerateAudioStreamAsync(reply, agent.Agent["labsId"].ToString());
