@@ -187,6 +187,9 @@ public class VoiceController : ControllerBase
 
         // Generar respuesta IA
         var reply = await _gptService.GetReply(transcript);
+        
+        // Loguear la respuesta recibida de GPT
+        _logger.LogInformation("Respuesta de GPT para ElevenLabs: {Response}", reply);
 
         // Generar audio
         var audioStream = await _elevenService.GenerateAudioStreamAsync(reply, agent.Agent["labsId"].ToString());
