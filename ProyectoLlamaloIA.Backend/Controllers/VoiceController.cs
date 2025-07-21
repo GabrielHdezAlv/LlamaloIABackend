@@ -122,16 +122,17 @@ public class VoiceController : ControllerBase
         To ??= ToQuery;
 
         var response = new VoiceResponse();
-        response.Say("Puedes empezar a hablar después del tono. Presiona cualquier tecla para finalizar.");
 
         var processUrl = new Uri($"/voice/process?To={Uri.EscapeDataString(To)}", UriKind.Relative);
 
         response.Record(
             action: processUrl,
             method: "POST",
-            maxLength: 30,
-            finishOnKey: "#",
-            playBeep: true);
+            maxLength: 15,       // Cada turno dura hasta 15 segundos
+            timeout: 1,          // Finaliza si hay 1 segundo de silencio
+            playBeep: false,     // Sin pitido
+            trim: "trim-silence" // Elimina silencios al inicio/final
+        );
 
         return Content(response.ToString(), "application/xml");
     }
