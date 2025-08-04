@@ -19,7 +19,7 @@ public class DeepgramService
     
     public async Task<string> TranscribeFromUrlAsync(string audioUrl)
     {
-        var requestUrl = "https://api.deepgram.com/v1/listen?language=es&punctuate=true";
+        var requestUrl = "https://api.deepgram.com/v1/listen?language=es&punctuate=true&detect_language=false";
 
         var payload = new { url = audioUrl };
 
@@ -58,7 +58,7 @@ public class DeepgramService
     
     public async Task<string> TranscribeFromStreamAsync(Stream audioStream)
     {
-        var requestUrl = "https://api.deepgram.com/v1/listen?language=es&punctuate=true";
+        var requestUrl = "https://api.deepgram.com/v1/listen?language=es&punctuate=true&detect_language=false";
 
         var content = new StreamContent(audioStream);
         content.Headers.ContentType = new MediaTypeHeaderValue("audio/mpeg"); // Asegúrate de usar el tipo correcto
