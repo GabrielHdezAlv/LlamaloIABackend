@@ -178,25 +178,30 @@ public class VoiceController : ControllerBase
         // Transcribir
         using var recordingStream = await _httpClient.GetStreamAsync(RecordingUrl);
         var transcript = await _deepgramService.TranscribeFromStreamAsync(recordingStream);
+        _logger.LogInformation("🎤 Transcripción del usuario: {Transcript}", transcript);
 
         // Detectar intención de terminar
         if (transcript.ToLower().Contains("gracias") || transcript.ToLower().Contains("ya está") || transcript.ToLower().Contains("eso es todo"))
         {
+            _logger.LogInformation("📞 Usuario terminó la llamada con: \"{Transcript}\"", transcript);
             response.Say("Gracias por tu llamada. Hasta pronto.");
             return Content(response.ToString(), "application/xml");
         }
 
         // Generar respuesta IA
         var reply = await _gptService.GetReply(transcript);
+        _logger.LogInformation("🧠 Respuesta generada por GPT: {Reply}", reply);
         
         // Loguear la respuesta recibida de GPT
         _logger.LogInformation("Respuesta de GPT para ElevenLabs: {Response}", reply);
 
         // Generar audio
         var audioStream = await _elevenService.GenerateAudioStreamAsync(reply, agent.Agent["labsId"].ToString());
-
+        _logger.LogInformation("🔊 Audio generado con ElevenLabs para el texto: \"{Reply}\"", reply);
+        
         // Subir a Firebase
         var audioUrl = await _firebaseService.UploadAudioAsync(agent.UserId, audioStream);
+        _logger.LogInformation("📤 Audio subido a Firebase. URL: {AudioUrl}", audioUrl);
 
         response.Play(new Uri(audioUrl));
         response.Redirect(new Uri("/voice/record", UriKind.Relative));
