@@ -61,8 +61,7 @@ public class DeepgramService
         var requestUrl = "https://api.deepgram.com/v1/listen?language=es&punctuate=true&detect_language=false";
 
         var content = new StreamContent(audioStream);
-        content.Headers.ContentType = new MediaTypeHeaderValue("audio/wav");
-        _logger.LogInformation("🎧 Enviando audio a Deepgram. Content-Type: {Type}", content.Headers.ContentType);
+        content.Headers.ContentType = new MediaTypeHeaderValue("audio/mpeg"); // Asegúrate de usar el tipo correcto
 
         var response = await _httpClient.PostAsync(requestUrl, content);
 
