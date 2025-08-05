@@ -178,7 +178,7 @@ public class VoiceController : ControllerBase
         
         // Transcribir
         using var recordingStream = await _httpClient.GetStreamAsync(RecordingUrl);
-        _logger.LogInformation("📦 Tamaño del stream de audio: {Length} bytes", recordingStream.Length);
+        _logger.LogInformation("📥 Grabación de audio descargada desde Twilio.");
         
         var transcript = await _deepgramService.TranscribeFromStreamAsync(recordingStream);
         _logger.LogInformation("🎤 Transcripción del usuario: {Transcript}", transcript);
