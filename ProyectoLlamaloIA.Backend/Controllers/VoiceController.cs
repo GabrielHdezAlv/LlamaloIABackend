@@ -175,8 +175,11 @@ public class VoiceController : ControllerBase
         _httpClient.DefaultRequestHeaders.Authorization =
             new System.Net.Http.Headers.AuthenticationHeaderValue("Basic", Convert.ToBase64String(byteArray));
 
+        
         // Transcribir
         using var recordingStream = await _httpClient.GetStreamAsync(RecordingUrl);
+        _logger.LogInformation("📦 Tamaño del stream de audio: {Length} bytes", recordingStream.Length);
+        
         var transcript = await _deepgramService.TranscribeFromStreamAsync(recordingStream);
         _logger.LogInformation("🎤 Transcripción del usuario: {Transcript}", transcript);
 
