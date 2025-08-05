@@ -129,7 +129,7 @@ public class VoiceController : ControllerBase
             action: processUrl,
             method: "POST",
             maxLength: 15,       // Cada turno dura hasta 15 segundos
-            timeout: 1,          // Finaliza si hay 1 segundo de silencio
+            timeout: 3,          // Finaliza si hay 1 segundo de silencio
             playBeep: false,     // Sin pitido
             trim: "trim-silence" // Elimina silencios al inicio/final
         );
@@ -192,6 +192,14 @@ public class VoiceController : ControllerBase
         {
             _logger.LogInformation("📞 Usuario terminó la llamada con: \"{Transcript}\"", transcript);
             response.Say("Gracias por tu llamada. Hasta pronto.");
+            return Content(response.ToString(), "application/xml");
+        }
+        
+        if (string.IsNullOrWhiteSpace(transcript))
+        {
+            _logger.LogWarning("⚠️ La transcripción está vacía. No se detectó habla en la grabación.");
+            response.Say("No pude escucharte claramente. ¿Puedes repetirlo?");
+            response.Redirect(new Uri("/voice/record", UriKind.Relative));
             return Content(response.ToString(), "application/xml");
         }
 
