@@ -177,10 +177,14 @@ public class VoiceController : ControllerBase
 
         
         // Transcribir
-        using var recordingStream = await _httpClient.GetStreamAsync(RecordingUrl);
-        _logger.LogInformation("📥 Grabación de audio descargada desde Twilio.");
-        
-        var transcript = await _deepgramService.TranscribeFromStreamAsync(recordingStream);
+        using var originalStream = await _httpClient.GetStreamAsync(RecordingUrl);
+        using var memoryStream = new MemoryStream();
+        await originalStream.CopyToAsync(memoryStream);
+        memoryStream.Position = 0;
+
+        _logger.LogInformation("📥 Grabación de audio descargada y cargada en memoria. Tamaño: {Size} bytes", memoryStream.Length);
+
+        var transcript = await _deepgramService.TranscribeFromStreamAsync(memoryStream);
         _logger.LogInformation("🎤 Transcripción del usuario: {Transcript}", transcript);
 
         // Detectar intención de terminar
