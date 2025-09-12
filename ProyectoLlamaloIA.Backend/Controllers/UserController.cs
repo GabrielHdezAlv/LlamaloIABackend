@@ -41,7 +41,7 @@ public class UserController : ControllerBase
 
             return Ok(new
             {
-                userId = userData["id"],
+                userId = userData["userId"],
                 name = userData["name"],
                 lastname = userData["lastname"],
                 profileImage = userData["profileImage"],
