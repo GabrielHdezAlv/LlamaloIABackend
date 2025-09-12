@@ -41,9 +41,12 @@ public class UserController : ControllerBase
 
             return Ok(new
             {
-                userId = userId,
+                userId = userData["id"],
                 name = userData["name"],
                 lastname = userData["lastname"],
+                profileImage = userData["profileImage"],
+                enterprise = userData["enterprise"],
+                enterpriseWeb = userData["enterpriseWeb"],
                 email = userData["email"],
                 createdAt = userData["createdAt"],
                 twilio = userData["twilio"],

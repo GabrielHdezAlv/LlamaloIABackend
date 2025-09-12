@@ -5,11 +5,23 @@ namespace ProyectoLlamaloIA.Backend.Models;
 [FirestoreData]
 public class User : FirebaseDocument
 {
+    [FirestoreProperty("userId")]
+    public string userId { get; set; }
+    
     [FirestoreProperty("name")]
     public string name { get; set; }
 
     [FirestoreProperty("lastname")]
     public string lastname { get; set; }
+    
+    [FirestoreProperty("profileImage")]
+    public string profileImage { get; set; }
+    
+    [FirestoreProperty("enterprise")]
+    public string enterprise { get; set; }
+    
+    [FirestoreProperty("enterpriseWeb")]
+    public string enterpriseWeb { get; set; }
 
     [FirestoreProperty("email")]
     public string email { get; set; }

@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 using System.Text;
 using Google.Cloud.Firestore;
+using Google.Cloud.Storage.V1;
 using Microsoft.AspNetCore.Authorization;
 using Newtonsoft.Json;
 using ProyectoLlamaloIA.Backend.Models;
@@ -68,9 +69,12 @@ public class AuthController : ControllerBase
         // 🔹 Guardamos en Firestore con el mismo ID que Firebase Auth
         User newUser = new User
         {
-            Id = firebaseResponse.localId, // ✅ Usamos el ID de Firebase Auth
+            userId = firebaseResponse.localId,
             name = request.name,
             lastname = request.lastname,
+            profileImage = "",
+            enterprise = "",
+            enterpriseWeb = "",
             email = request.email,
             password = hashedPassword, // 🔐 Guardamos la contraseña cifrada
             created_at = DateTime.UtcNow,
@@ -133,6 +137,133 @@ public class AuthController : ControllerBase
             Token = firebaseResponse.idToken,
             UserId = firebaseResponse.localId
         });
+    }
+    
+    // ✅ 2️⃣ ACTUALIZAR los datos del usuario
+    [HttpPut("profile")]
+    [Authorize] // 🔒 Requiere JWT
+    public async Task<IActionResult> UpdateUserProfile([FromBody] UpdateUserProfileDto updateDto)
+    {
+        try
+        {
+            // 🔑 Obtener el UID desde el token JWT
+            string? userId = User.FindFirst("user_id")?.Value
+                            ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                            ?? User.FindFirst("sub")?.Value;
+
+            if (string.IsNullOrEmpty(userId))
+                return Unauthorized(new { message = "Token inválido o expirado" });
+
+            // 🔍 Buscar el documento del usuario en Firestore
+            DocumentReference docRef = _firestoreDb.Collection("users").Document(userId);
+            DocumentSnapshot snapshot = await docRef.GetSnapshotAsync();
+
+            if (!snapshot.Exists)
+                return NotFound(new { message = "Usuario no encontrado en Firestore" });
+
+            // 📦 Solo actualizar los campos que se reciban
+            var updates = new Dictionary<string, object>();
+
+            if (!string.IsNullOrEmpty(updateDto.Name))
+                updates["name"] = updateDto.Name;
+
+            if (!string.IsNullOrEmpty(updateDto.Lastname))
+                updates["lastname"] = updateDto.Lastname;
+
+            if (!string.IsNullOrEmpty(updateDto.ProfileImage))
+                updates["profileImage"] = updateDto.ProfileImage;
+
+            if (!string.IsNullOrEmpty(updateDto.Enterprise))
+                updates["enterprise"] = updateDto.Enterprise;
+
+            if (!string.IsNullOrEmpty(updateDto.EnterpriseWeb))
+                updates["enterpriseWeb"] = updateDto.EnterpriseWeb;
+
+            if (updates.Count == 0)
+                return BadRequest(new { message = "No se enviaron datos para actualizar" });
+
+            // ✏️ Actualizar Firestore
+            await docRef.UpdateAsync(updates);
+
+            // 🔄 Obtener de nuevo el perfil actualizado
+            DocumentSnapshot updatedSnapshot = await docRef.GetSnapshotAsync();
+            var updatedData = updatedSnapshot.ToDictionary();
+
+            return Ok(new
+            {
+                message = "Perfil actualizado correctamente",
+                name = updatedData["name"],
+                lastname = updatedData["lastname"],
+                profileImage = updatedData["profileImage"],
+                enterprise = updatedData["enterprise"],
+                enterpriseWeb = updatedData["enterpriseWeb"],
+                email = updatedData["email"],
+                createdAt = updatedData["createdAt"]
+            });
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { message = "Error al actualizar el perfil del usuario", error = ex.Message });
+        }
+    }
+    
+    [HttpPost("profile/image")]
+    [Authorize]
+    public async Task<IActionResult> UploadProfileImage([FromForm] IFormFile image, [FromForm] string userId)
+    {
+        try
+        {
+            // Validar autenticación y que el userId corresponda al token
+            string? tokenUserId = User.FindFirst("user_id")?.Value
+                               ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                               ?? User.FindFirst("sub")?.Value;
+
+            if (string.IsNullOrEmpty(tokenUserId) || tokenUserId != userId)
+                return Unauthorized(new { message = "No tienes permiso para modificar este perfil" });
+
+            // Validar archivo
+            if (image == null || image.Length == 0)
+                return BadRequest(new { message = "Debe enviarse un archivo de imagen" });
+
+            if (image.Length > 5 * 1024 * 1024) // 5MB
+                return BadRequest(new { message = "La imagen no puede superar los 5MB" });
+
+            var allowedTypes = new[] { "image/png", "image/jpeg", "image/jpg" };
+            if (!allowedTypes.Contains(image.ContentType))
+                return BadRequest(new { message = "Formato de imagen no permitido. Use PNG o JPG" });
+
+            // Subida a Firebase Storage
+            string bucketName = "llamaloio.firebasestorage.app";
+            string extension = Path.GetExtension(image.FileName);
+            string fileName = $"profile-images/{userId}/{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}{extension}";
+
+            using var stream = image.OpenReadStream();
+            var storage = await StorageClient.CreateAsync();
+            await storage.UploadObjectAsync(bucketName, fileName, image.ContentType, stream);
+            
+            string imageUrl = $"https://storage.googleapis.com/{bucketName}/{fileName}";
+
+            // Actualizar Firestore con la nueva URL
+            DocumentReference docRef = _firestoreDb.Collection("users").Document(userId);
+            await docRef.UpdateAsync(new Dictionary<string, object>
+            {
+                { "profileImage", imageUrl }
+            });
+
+            // Opcional: guardar historial en otra colección
+            // await _firestoreDb.Collection("profileImageHistory").AddAsync(new { userId, imageUrl, timestamp = DateTime.UtcNow });
+
+            // Respuesta
+            return Ok(new
+            {
+                message = "Imagen de perfil actualizada correctamente",
+                imageUrl = imageUrl
+            });
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { message = "Error al subir la imagen de perfil", error = ex.Message });
+        }
     }
 
     // ✅ 3️⃣ Obtener datos del usuario autenticado 🔐
