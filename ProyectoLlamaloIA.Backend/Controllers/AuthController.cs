@@ -17,13 +17,16 @@ public class AuthController : ControllerBase
     private readonly HttpClient _httpClient;
     private readonly UserRepository _userRepository;
     private readonly FirestoreDb _firestoreDb;
-    private const string FirebaseApiKey = "AIzaSyBeDYuVYfL9Multc9cOkXsk7lsL6t-YOUQ"; // ⚠️ Reemplázalo con tu API Key de Firebase
-
-    public AuthController(UserRepository userRepository, FirestoreDb firestoreDb)
+    private readonly IConfiguration _configuration;
+    // private const string FirebaseApiKey = "AIzaSyBeDYuVYfL9Multc9cOkXsk7lsL6t-YOUQ"; // ⚠️ Reemplázalo con tu API Key de Firebase
+    private const string FirebaseApiKey = "sk_0f16002177bf557f9617b0dfc6ea0f5d23571031949145a5";
+    
+    public AuthController(UserRepository userRepository, FirestoreDb firestoreDb, IConfiguration configuration)
     {
         _httpClient = new HttpClient();
         _userRepository = userRepository;
         _firestoreDb = firestoreDb;
+        _configuration = configuration;
     }
 
     // ✅ 1️⃣ REGISTRO de usuario en Firebase Auth y Firestore
@@ -210,62 +213,78 @@ public class AuthController : ControllerBase
     
     [HttpPost("profile/image")]
     [Authorize]
-    public async Task<IActionResult> UploadProfileImage([FromForm] IFormFile image, [FromForm] string userId)
+   public async Task<IActionResult> UploadProfileImage([FromForm] IFormFile image, [FromForm] string userId)
+{
+    try
     {
-        try
-        {
-            // Validar autenticación y que el userId corresponda al token
-            string? tokenUserId = User.FindFirst("user_id")?.Value
+        // Obtener UID del usuario autenticado
+        string? tokenUserId = User.FindFirst("user_id")?.Value
                                ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value
                                ?? User.FindFirst("sub")?.Value;
 
-            if (string.IsNullOrEmpty(tokenUserId) || tokenUserId != userId)
-                return Unauthorized(new { message = "No tienes permiso para modificar este perfil" });
+        if (string.IsNullOrEmpty(tokenUserId) || tokenUserId != userId)
+            return Unauthorized(new { message = "No tienes permiso para modificar este perfil" });
 
-            // Validar archivo
-            if (image == null || image.Length == 0)
-                return BadRequest(new { message = "Debe enviarse un archivo de imagen" });
+        // Validar archivo
+        if (image == null || image.Length == 0)
+            return BadRequest(new { message = "Debe enviarse un archivo de imagen" });
 
-            if (image.Length > 5 * 1024 * 1024) // 5MB
-                return BadRequest(new { message = "La imagen no puede superar los 5MB" });
+        if (image.Length > 5 * 1024 * 1024)
+            return BadRequest(new { message = "La imagen no puede superar los 5MB" });
 
-            var allowedTypes = new[] { "image/png", "image/jpeg", "image/jpg" };
-            if (!allowedTypes.Contains(image.ContentType))
-                return BadRequest(new { message = "Formato de imagen no permitido. Use PNG o JPG" });
+        var allowedTypes = new[] { "image/png", "image/jpeg", "image/jpg" };
+        if (!allowedTypes.Contains(image.ContentType))
+            return BadRequest(new { message = "Formato de imagen no permitido. Use PNG o JPG" });
 
-            // Subida a Firebase Storage
-            string bucketName = "llamaloio.firebasestorage.app";
-            string extension = Path.GetExtension(image.FileName);
-            string fileName = $"profile-images/{userId}/{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}{extension}";
+        // Configuración Firebase Storage
+        var bucket = _configuration["Firebase:StorageBucket"]; // Tomamos el bucket de la configuración
+        var storage = StorageClient.Create();
+        string extension = Path.GetExtension(image.FileName);
+        string objectName = $"profile-images/{userId}/profile{extension}";
 
-            using var stream = image.OpenReadStream();
-            var storage = await StorageClient.CreateAsync();
-            await storage.UploadObjectAsync(bucketName, fileName, image.ContentType, stream);
-            
-            string imageUrl = $"https://storage.googleapis.com/{bucketName}/{fileName}";
-
-            // Actualizar Firestore con la nueva URL
-            DocumentReference docRef = _firestoreDb.Collection("users").Document(userId);
-            await docRef.UpdateAsync(new Dictionary<string, object>
-            {
-                { "profileImage", imageUrl }
-            });
-
-            // Opcional: guardar historial en otra colección
-            // await _firestoreDb.Collection("profileImageHistory").AddAsync(new { userId, imageUrl, timestamp = DateTime.UtcNow });
-
-            // Respuesta
-            return Ok(new
-            {
-                message = "Imagen de perfil actualizada correctamente",
-                imageUrl = imageUrl
-            });
-        }
-        catch (Exception ex)
+        // Verificar si ya existe la imagen y eliminarla
+        try
         {
-            return BadRequest(new { message = "Error al subir la imagen de perfil", error = ex.Message });
+            var existingObject = await storage.GetObjectAsync(bucket, objectName);
+            if (existingObject != null)
+            {
+                await storage.DeleteObjectAsync(bucket, objectName);
+            }
         }
+        catch (Google.GoogleApiException ex) when (ex.Error.Code == 404)
+        {
+            // No existe, continuar
+        }
+
+        // Subir la nueva imagen con permisos públicos
+        using var stream = image.OpenReadStream();
+        await storage.UploadObjectAsync(
+            bucket,
+            objectName,
+            image.ContentType,
+            stream,
+            new UploadObjectOptions { PredefinedAcl = PredefinedObjectAcl.PublicRead }
+        );
+
+        // Construir URL pública
+        var imageUrl = $"https://storage.googleapis.com/{bucket}/{objectName}";
+
+        // Guardar URL en Firestore usando MergeFields
+        var userDocRef = _firestoreDb.Collection("users").Document(userId);
+        await userDocRef.SetAsync(new { profile = new { imageUrl } }, SetOptions.MergeFields("profile"));
+
+        return Ok(new
+        {
+            message = "Imagen de perfil actualizada correctamente",
+            imageUrl
+        });
     }
+    catch (Exception ex)
+    {
+        return BadRequest(new { message = "Error al subir la imagen de perfil", error = ex.Message });
+    }
+}
+
 
     // ✅ 3️⃣ Obtener datos del usuario autenticado 🔐
     [HttpGet("user")]
