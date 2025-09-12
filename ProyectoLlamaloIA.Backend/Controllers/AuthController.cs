@@ -18,8 +18,7 @@ public class AuthController : ControllerBase
     private readonly UserRepository _userRepository;
     private readonly FirestoreDb _firestoreDb;
     private readonly IConfiguration _configuration;
-    // private const string FirebaseApiKey = "AIzaSyBeDYuVYfL9Multc9cOkXsk7lsL6t-YOUQ"; // ⚠️ Reemplázalo con tu API Key de Firebase
-    private const string FirebaseApiKey = "sk_0f16002177bf557f9617b0dfc6ea0f5d23571031949145a5";
+    private const string FirebaseApiKey = "AIzaSyBeDYuVYfL9Multc9cOkXsk7lsL6t-YOUQ";
     
     public AuthController(UserRepository userRepository, FirestoreDb firestoreDb, IConfiguration configuration)
     {
