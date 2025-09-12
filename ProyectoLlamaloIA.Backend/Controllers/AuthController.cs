@@ -88,6 +88,7 @@ public class AuthController : ControllerBase
         DocumentReference docRef = _firestoreDb.Collection("users").Document(firebaseResponse.localId);
         await docRef.SetAsync(new
         {
+            userid = newUser.userId,
             name = request.name,
             lastname = request.lastname,
             email = request.email,
