@@ -212,78 +212,77 @@ public class AuthController : ControllerBase
     
     [HttpPost("profile/image")]
     [Authorize]
-   public async Task<IActionResult> UploadProfileImage([FromForm] IFormFile image, [FromForm] string userId)
-{
-    try
+    public async Task<IActionResult> UploadProfileImage([FromForm] IFormFile image)
     {
-        // Obtener UID del usuario autenticado
-        string? tokenUserId = User.FindFirst("user_id")?.Value
-                               ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value
-                               ?? User.FindFirst("sub")?.Value;
-
-        if (string.IsNullOrEmpty(tokenUserId) || tokenUserId != userId)
-            return Unauthorized(new { message = "No tienes permiso para modificar este perfil" });
-
-        // Validar archivo
-        if (image == null || image.Length == 0)
-            return BadRequest(new { message = "Debe enviarse un archivo de imagen" });
-
-        if (image.Length > 5 * 1024 * 1024)
-            return BadRequest(new { message = "La imagen no puede superar los 5MB" });
-
-        var allowedTypes = new[] { "image/png", "image/jpeg", "image/jpg" };
-        if (!allowedTypes.Contains(image.ContentType))
-            return BadRequest(new { message = "Formato de imagen no permitido. Use PNG o JPG" });
-
-        // Configuración Firebase Storage
-        var bucket = _configuration["Firebase:StorageBucket"]; // Tomamos el bucket de la configuración
-        var storage = StorageClient.Create();
-        string extension = Path.GetExtension(image.FileName);
-        string objectName = $"profile-images/{userId}/profile{extension}";
-
-        // Verificar si ya existe la imagen y eliminarla
         try
         {
-            var existingObject = await storage.GetObjectAsync(bucket, objectName);
-            if (existingObject != null)
+            // 1️⃣ Obtener UID del usuario autenticado SOLO del token
+            string? userId = User.FindFirst("user_id")?.Value
+                            ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                            ?? User.FindFirst("sub")?.Value;
+
+            if (string.IsNullOrEmpty(userId))
+                return Unauthorized(new { message = "Token inválido o expirado" });
+
+            // 2️⃣ Validar archivo
+            if (image == null || image.Length == 0)
+                return BadRequest(new { message = "Debe enviarse un archivo de imagen" });
+
+            if (image.Length > 5 * 1024 * 1024)
+                return BadRequest(new { message = "La imagen no puede superar los 5MB" });
+
+            var allowedTypes = new[] { "image/png", "image/jpeg", "image/jpg" };
+            if (!allowedTypes.Contains(image.ContentType))
+                return BadRequest(new { message = "Formato de imagen no permitido. Use PNG o JPG" });
+
+            // 3️⃣ Configuración Firebase Storage
+            var bucket = _configuration["Firebase:StorageBucket"];
+            var storage = StorageClient.Create();
+            string extension = Path.GetExtension(image.FileName);
+            string objectName = $"profile-images/{userId}/profile{extension}";
+
+            // Eliminar anterior si existe
+            try
             {
                 await storage.DeleteObjectAsync(bucket, objectName);
             }
+            catch (Google.GoogleApiException ex) when (ex.Error.Code == 404)
+            {
+                // No existía, continuar
+            }
+
+            // Subir nueva imagen pública
+            using var stream = image.OpenReadStream();
+            await storage.UploadObjectAsync(
+                bucket,
+                objectName,
+                image.ContentType,
+                stream,
+                new UploadObjectOptions { PredefinedAcl = PredefinedObjectAcl.PublicRead }
+            );
+
+            // Construir URL pública
+            var imageUrl = $"https://storage.googleapis.com/{bucket}/{objectName}";
+
+            // 4️⃣ Actualizar Firestore en campo plano "profileImage"
+            var userDocRef = _firestoreDb.Collection("users").Document(userId);
+            await userDocRef.UpdateAsync(new Dictionary<string, object>
+            {
+                { "profileImage", imageUrl }
+            });
+
+            // 5️⃣ Respuesta
+            return Ok(new
+            {
+                message = "Imagen de perfil actualizada correctamente",
+                imageUrl
+            });
         }
-        catch (Google.GoogleApiException ex) when (ex.Error.Code == 404)
+        catch (Exception ex)
         {
-            // No existe, continuar
+            return BadRequest(new { message = "Error al subir la imagen de perfil", error = ex.Message });
         }
-
-        // Subir la nueva imagen con permisos públicos
-        using var stream = image.OpenReadStream();
-        await storage.UploadObjectAsync(
-            bucket,
-            objectName,
-            image.ContentType,
-            stream,
-            new UploadObjectOptions { PredefinedAcl = PredefinedObjectAcl.PublicRead }
-        );
-
-        // Construir URL pública
-        var imageUrl = $"https://storage.googleapis.com/{bucket}/{objectName}";
-
-        // Guardar URL en Firestore usando MergeFields
-        var userDocRef = _firestoreDb.Collection("users").Document(userId);
-        await userDocRef.SetAsync(new { profile = new { imageUrl } }, SetOptions.MergeFields("profile"));
-
-        return Ok(new
-        {
-            message = "Imagen de perfil actualizada correctamente",
-            imageUrl
-        });
     }
-    catch (Exception ex)
-    {
-        return BadRequest(new { message = "Error al subir la imagen de perfil", error = ex.Message });
-    }
-}
-
 
     // ✅ 3️⃣ Obtener datos del usuario autenticado 🔐
     [HttpGet("user")]
