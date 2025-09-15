@@ -142,6 +142,37 @@ public class AuthController : ControllerBase
         });
     }
     
+    // RECOVER de la contraseña del usuario y validación de que el correo facilitado corresponde a alguna cuenta
+    [HttpPost("recover")]
+    public async Task<IActionResult> RecoverPassword([FromBody] RecoverRequest request)
+    {
+        if (string.IsNullOrEmpty(request.Email))
+        {
+            return BadRequest(new { message = "El email es obligatorio." });
+        }
+
+        var payload = new
+        {
+            requestType = "PASSWORD_RESET",
+            email = request.Email
+        };
+
+        var response = await _httpClient.PostAsync(
+            $"https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key={FirebaseApiKey}",
+            new StringContent(JsonConvert.SerializeObject(payload), Encoding.UTF8, "application/json")
+        );
+
+        var responseBody = await response.Content.ReadAsStringAsync();
+
+        if (!response.IsSuccessStatusCode)
+        {
+            Console.WriteLine($"🔥 Error en recover: {responseBody}");
+            return BadRequest(new { message = "No se pudo enviar el correo de recuperación.", error = responseBody });
+        }
+
+        return Ok(new { message = "Si el correo está registrado, recibirás un email con instrucciones." });
+    }
+    
     // ✅ 2️⃣ ACTUALIZAR los datos del usuario
     [HttpPut("profile")]
     [Authorize] // 🔒 Requiere JWT
