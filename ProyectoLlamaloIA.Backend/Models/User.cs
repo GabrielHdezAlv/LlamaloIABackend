@@ -32,7 +32,7 @@ public class User : FirebaseDocument
     [FirestoreProperty("createdAt")]
     public Timestamp createdAt { get; set; }
 
-    [FirestoreProperty("twilioInfo")]
+    [FirestoreProperty("twilio")]
     public TwilioInfo twilio { get; set; }
     
     [FirestoreProperty("agent")]
