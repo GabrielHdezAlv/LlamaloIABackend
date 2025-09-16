@@ -30,7 +30,7 @@ public class User : FirebaseDocument
     public string password { get; set; }
 
     [FirestoreProperty("created_at")]
-    public DateTime created_at { get; set; }
+    public Timestamp createdAt { get; set; }
 
     [FirestoreProperty("twilioInfo")]
     public TwilioInfo twilio { get; set; }
