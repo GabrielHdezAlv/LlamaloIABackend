@@ -276,16 +276,13 @@ public class AuthController : ControllerBase
             var bucket = _configuration["Firebase:StorageBucket"];
             var storage = StorageClient.Create();
             string extension = Path.GetExtension(image.FileName);
-            string objectName = $"profile-images/{userId}/profile{extension}";
+            string objectName = $"profile-images/{userId}{extension}"; 
 
             // Eliminar anterior si existe
-            try
+            var objects = storage.ListObjects(bucket, $"profile-images/{userId}");
+            foreach (var obj in objects)
             {
-                await storage.DeleteObjectAsync(bucket, objectName);
-            }
-            catch (Google.GoogleApiException ex) when (ex.Error.Code == 404)
-            {
-                // No existía, continuar
+                await storage.DeleteObjectAsync(bucket, obj.Name);
             }
 
             // Subir nueva imagen pública
