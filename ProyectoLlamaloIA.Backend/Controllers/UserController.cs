@@ -26,7 +26,6 @@ public class UserController : ControllerBase
             // Obtener el UID del usuario autenticado a partir del token JWT
             string userId = User.FindFirst("user_id")?.Value ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? User.FindFirst("sub")?.Value;
 
-
             if (string.IsNullOrEmpty(userId))
                 return Unauthorized(new { message = "Token inválido o expirado" });
 
