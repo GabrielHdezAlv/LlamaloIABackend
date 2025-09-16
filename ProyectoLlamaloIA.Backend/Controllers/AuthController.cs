@@ -78,9 +78,9 @@ public class AuthController : ControllerBase
             enterprise = "",
             enterpriseWeb = "",
             email = request.email,
-            password = hashedPassword, // 🔐 Guardamos la contraseña cifrada
+            password = hashedPassword, 
             created_at = DateTime.UtcNow,
-            twilio = new TwilioInfo("", 0, "", "", ""),
+            twilio = new TwilioInfo("", 0, "", "", "", ""),
             agent = firstAgent
         };
 
