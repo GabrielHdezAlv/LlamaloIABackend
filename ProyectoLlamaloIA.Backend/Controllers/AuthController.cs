@@ -79,7 +79,7 @@ public class AuthController : ControllerBase
             enterpriseWeb = "",
             email = request.email,
             password = hashedPassword, 
-            created_at = DateTime.UtcNow,
+            createdAt = Timestamp.GetCurrentTimestamp(),
             twilio = new TwilioInfo("", 0, "", "", "", ""),
             agent = firstAgent
         };
@@ -89,19 +89,6 @@ public class AuthController : ControllerBase
         // 🔹 Guardar usuario en Firestore (colección "users")
         DocumentReference docRef = _firestoreDb.Collection("users").Document(firebaseResponse.localId);
         await docRef.SetAsync(newUser);
-        /*await docRef.SetAsync(new
-        {
-            userId = newUser.userId,
-            name = request.name,
-            lastname = request.lastname,
-            profileImage = newUser.profileImage,
-            enterprise = newUser.enterprise,
-            enterpriseWeb = newUser.enterprise,
-            email = request.email,
-            twilio = newUser.twilio,
-            agent = newUser.agent,
-            createdAt = Timestamp.GetCurrentTimestamp()
-        });*/
 
         return Ok(new
         {
