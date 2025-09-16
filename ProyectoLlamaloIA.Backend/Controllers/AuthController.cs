@@ -88,7 +88,8 @@ public class AuthController : ControllerBase
 
         // 🔹 Guardar usuario en Firestore (colección "users")
         DocumentReference docRef = _firestoreDb.Collection("users").Document(firebaseResponse.localId);
-        await docRef.SetAsync(new
+        await docRef.SetAsync(newUser);
+        /*await docRef.SetAsync(new
         {
             userId = newUser.userId,
             name = request.name,
@@ -100,7 +101,7 @@ public class AuthController : ControllerBase
             twilio = newUser.twilio,
             agent = newUser.agent,
             createdAt = Timestamp.GetCurrentTimestamp()
-        });
+        });*/
 
         return Ok(new
         {
