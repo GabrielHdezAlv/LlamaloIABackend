@@ -18,6 +18,61 @@ public class GPTService
         _logger = logger;
     }
     
+    public async IAsyncEnumerable<string> GetReplyStream(string userInput)
+    {
+        var requestUrl = "https://api.openai.com/v1/chat/completions";
+
+        var requestBody = new
+        {
+            model = "ft:gpt-3.5-turbo-1106:llamalo:llamalo-ai-beta-v1:BJ0wvqjK",
+            messages = new[]
+            {
+                new { role = "user", content = userInput }
+            },
+            temperature = 0.7,
+            stream = true
+        };
+
+        var jsonContent = new StringContent(
+            JsonSerializer.Serialize(requestBody),
+            Encoding.UTF8,
+            "application/json"
+        );
+
+        var request = new HttpRequestMessage(HttpMethod.Post, requestUrl)
+        {
+            Content = jsonContent
+        };
+
+        using var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
+        response.EnsureSuccessStatusCode();
+
+
+        await using var stream = await response.Content.ReadAsStreamAsync();
+        using var reader = new StreamReader(stream);
+
+        while (!reader.EndOfStream)
+        {
+            var line = await reader.ReadLineAsync();
+            if (string.IsNullOrWhiteSpace(line) || !line.StartsWith("data: ")) continue;
+
+            var jsonLine = line.Substring("data: ".Length);
+            if (jsonLine == "[DONE]") yield break;
+
+            using var doc = JsonDocument.Parse(jsonLine);
+            var content = doc.RootElement
+                .GetProperty("choices")[0]
+                .GetProperty("delta")
+                .GetProperty("content")
+                .GetString();
+
+            if (!string.IsNullOrEmpty(content))
+                yield return content;
+        }
+    }
+
+
+    
     public async Task<string> GetReply(string userInput)
     {
         var requestUrl = "https://api.openai.com/v1/chat/completions";

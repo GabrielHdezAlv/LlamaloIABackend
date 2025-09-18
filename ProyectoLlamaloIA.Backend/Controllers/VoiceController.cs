@@ -100,14 +100,8 @@ public class VoiceController : ControllerBase
         start.Stream(url: "wss://llamaloiabackend.onrender.com/voice/stream");
         response.Append(start);
 
-        // 3️⃣ Redirigir inmediatamente a /voice/record para esperar respuesta del usuario
-        var recordUrl = new Uri($"/voice/record?To={Uri.EscapeDataString(To)}", UriKind.Relative);
-        response.Redirect(recordUrl);
-
         return Content(response.ToString(), "application/xml");
     }
-
-
     
     // Paso 2: grabar al usuario
     [HttpPost("record")]

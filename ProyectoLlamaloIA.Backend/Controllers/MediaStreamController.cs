@@ -48,22 +48,25 @@ public class MediaStreamController : ControllerBase
             var reply = await _gpt.GetReply(text);
 
             // Generar audio y enviar a Twilio en chunks
-            await foreach (var chunk in _eleven.GenerateAudioStreamChunks(reply))
+            await foreach (var partialText in _gpt.GetReplyStream(text))
             {
-                if (ws.State != WebSocketState.Open) break;
-
-                var base64 = Convert.ToBase64String(chunk);
-                var payload = JsonSerializer.Serialize(new
+                await foreach (var chunk in _eleven.GenerateAudioStreamChunks(partialText))
                 {
-                    @event = "media",
-                    media = new { payload = base64 }
-                });
-                var bytes = Encoding.UTF8.GetBytes(payload);
-                await ws.SendAsync(bytes, WebSocketMessageType.Text, true, CancellationToken.None);
+                    if (ws.State != WebSocketState.Open) break;
+
+                    var base64 = Convert.ToBase64String(chunk);
+                    var payload = JsonSerializer.Serialize(new
+                    {
+                        @event = "media",
+                        media = new { payload = base64 }
+                    });
+                    var bytes = Encoding.UTF8.GetBytes(payload);
+                    await ws.SendAsync(bytes, WebSocketMessageType.Text, true, CancellationToken.None);
+                }
             }
         });
 
-        var buffer = new byte[8192];
+        var buffer = new byte[2048];
 
         try
         {
