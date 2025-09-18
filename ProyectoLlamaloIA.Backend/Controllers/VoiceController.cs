@@ -78,29 +78,35 @@ public class VoiceController : ControllerBase
 
         var response = new VoiceResponse();
 
-        // 🔹 Buscar agente en Firestore
+        // Buscar agente en Firestore
         var agentsRef = _firestore.Collection("users");
         var snapshot = await agentsRef.GetSnapshotAsync();
         var matchingDoc = FindAgentByPhone(snapshot.Documents, To);
 
         if (matchingDoc == null)
         {
-            // Si no hay agente, avisar y finalizar
             response.Say("El número de agente no está configurado.", voice: "alice");
             return Content(response.ToString(), "application/xml");
         }
-        
-        // 🔹 Saludo breve para que el usuario escuche algo mientras se conecta
-        response.Say("Hola, conectando tu llamada, espera un momento...", voice: "alice");
 
-        // 🔹 Inicia streaming de audio inmediato hacia MediaStreamController
+        var agent = matchingDoc.ConvertTo<AgentConfig>();
+        var firstInteractionUrl = agent.Twilio["firstInteractionUrl"].ToString();
+
+        // 1️⃣ Reproducir audio de bienvenida
+        response.Play(new Uri(firstInteractionUrl));
+
+        // 2️⃣ Iniciar streaming hacia MediaStreamController
         var start = new Start();
         start.Stream(url: "wss://llamaloiabackend.onrender.com/voice/stream");
         response.Append(start);
 
-        // ✅ No usamos Play largo ni Redirect para evitar retrasos
+        // 3️⃣ Redirigir inmediatamente a /voice/record para esperar respuesta del usuario
+        var recordUrl = new Uri($"/voice/record?To={Uri.EscapeDataString(To)}", UriKind.Relative);
+        response.Redirect(recordUrl);
+
         return Content(response.ToString(), "application/xml");
     }
+
 
     
     // Paso 2: grabar al usuario
