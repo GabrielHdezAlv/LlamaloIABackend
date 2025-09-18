@@ -75,9 +75,23 @@ public class MediaStreamController : ControllerBase
 
                 // Procesar paquete Twilio
                 var json = Encoding.UTF8.GetString(buffer, 0, result.Count);
+                Console.WriteLine($"📥 Mensaje recibido de Twilio: {json}");
                 var msg = JsonSerializer.Deserialize<TwilioMediaEvent>(json);
 
-                if (msg?.Event == "media" && msg.Media != null)
+                if (msg == null) continue;
+
+                // 🔹 Manejar evento de inicio de stream
+                if (msg.Event == "start")
+                {
+                    var connected = JsonSerializer.Serialize(new { @event = "connected" });
+                    var bytes = Encoding.UTF8.GetBytes(connected);
+                    await ws.SendAsync(bytes, WebSocketMessageType.Text, true, CancellationToken.None);
+
+                    Console.WriteLine("✅ Respuesta 'connected' enviada a Twilio");
+                }
+                
+                // 🔹 Manejar audio entrante
+                if (msg.Event == "media" && msg.Media != null)
                 {
                     var pcm16k = MuLawDecoder.DecodeAndResampleTo16kHz(msg.Media.PayloadBytes);
 
