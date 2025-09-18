@@ -41,13 +41,9 @@ public class MediaStreamController : ControllerBase
 
             Console.WriteLine($"🎤 Transcripción parcial: {text} (final={isFinal})");
 
-            // Debounce opcional: esperar a que sea final o unos ms para no saturar GPT
             if (!isFinal) return;
 
-            // Llamada a GPT
-            var reply = await _gpt.GetReply(text);
-
-            // Generar audio y enviar a Twilio en chunks
+            // 🔹 Usar SOLO GetReplyStream (no GetReply)
             await foreach (var partialText in _gpt.GetReplyStream(text))
             {
                 await foreach (var chunk in _eleven.GenerateAudioStreamChunks(partialText))
@@ -66,7 +62,7 @@ public class MediaStreamController : ControllerBase
             }
         });
 
-        var buffer = new byte[2048];
+        var buffer = new byte[8192];
 
         try
         {
