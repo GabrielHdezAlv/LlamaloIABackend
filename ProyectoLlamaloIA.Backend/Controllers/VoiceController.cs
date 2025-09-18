@@ -1,5 +1,9 @@
+using System.Net.WebSockets;
+using System.Text;
 using Google.Cloud.Firestore;
 using Microsoft.AspNetCore.Mvc;
+using Newtonsoft.Json;
+using ProyectoLlamaloIA.Backend.Decodificator;
 using ProyectoLlamaloIA.Backend.Models;
 using ProyectoLlamaloIA.Backend.Services;
 using Twilio.AspNet.Core;
@@ -171,13 +175,29 @@ public class VoiceController : ControllerBase
         var twilioSid = accountSidObj.ToString();
         var twilioToken = authTokenObj.ToString();
 
-        var byteArray = System.Text.Encoding.ASCII.GetBytes($"{twilioSid}:{twilioToken}");
-        _httpClient.DefaultRequestHeaders.Authorization =
-            new System.Net.Http.Headers.AuthenticationHeaderValue("Basic", Convert.ToBase64String(byteArray));
+        // Crear request con credenciales por llamada (evita problemas de concurrencia)
+        var request = new HttpRequestMessage(HttpMethod.Get, RecordingUrl);
+        request.Headers.Authorization =
+            new System.Net.Http.Headers.AuthenticationHeaderValue(
+                "Basic",
+                Convert.ToBase64String(System.Text.Encoding.ASCII.GetBytes($"{twilioSid}:{twilioToken}"))
+            );
+
+        // Descargar la grabación en memoria
+        using var originalStream = await (await _httpClient.SendAsync(request)).Content.ReadAsStreamAsync();
+        using var memoryStream = new MemoryStream();
+        await originalStream.CopyToAsync(memoryStream);
+        memoryStream.Position = 0;
+        
+        _logger.LogInformation("📥 Grabación de audio descargada y cargada en memoria. Tamaño: {Size} bytes", memoryStream.Length);
+
+        // Transcribir con Deepgram
+        var transcript = await _deepgramService.TranscribeFromStreamAsync(memoryStream);
+        _logger.LogInformation("🎤 Transcripción del usuario: {Transcript}", transcript);
 
         
         // Transcribir
-        using var originalStream = await _httpClient.GetStreamAsync(RecordingUrl);
+        /*using var originalStream = await _httpClient.GetStreamAsync(RecordingUrl);
         using var memoryStream = new MemoryStream();
         await originalStream.CopyToAsync(memoryStream);
         memoryStream.Position = 0;
@@ -185,7 +205,7 @@ public class VoiceController : ControllerBase
         _logger.LogInformation("📥 Grabación de audio descargada y cargada en memoria. Tamaño: {Size} bytes", memoryStream.Length);
 
         var transcript = await _deepgramService.TranscribeFromStreamAsync(memoryStream);
-        _logger.LogInformation("🎤 Transcripción del usuario: {Transcript}", transcript);
+        _logger.LogInformation("🎤 Transcripción del usuario: {Transcript}", transcript);*/
 
         // Detectar intención de terminar
         if (transcript.ToLower().Contains("gracias") || transcript.ToLower().Contains("ya está") || transcript.ToLower().Contains("eso es todo"))
@@ -223,4 +243,17 @@ public class VoiceController : ControllerBase
 
         return Content(response.ToString(), "application/xml");
     }
+    
+    
+}
+
+public class TwilioMediaEventVoice
+{
+    public string Event { get; set; } = "";
+    public MediaPayloadVoice? Media { get; set; }
+}
+
+public class MediaPayloadVoice
+{
+    public string Payload { get; set; } = "";
 }

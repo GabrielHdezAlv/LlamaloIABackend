@@ -178,6 +178,14 @@ app.UseCors(corsPolicy);
 app.UseAuthentication();
 app.UseAuthorization();
 
+// Habilitar WebSockets
+var webSocketOptions = new WebSocketOptions
+{
+    KeepAliveInterval = TimeSpan.FromSeconds(30),
+    ReceiveBufferSize = 8192
+};
+app.UseWebSockets(webSocketOptions);
+
 app.MapControllers();
 
 // 🔧 Escuchar en el puerto definido por Render (variable de entorno PORT)
