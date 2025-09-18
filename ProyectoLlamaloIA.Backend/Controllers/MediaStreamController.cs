@@ -23,7 +23,7 @@ public class MediaStreamController : ControllerBase
         _eleven = eleven;
     }
 
-    [HttpPost]
+    [HttpGet]
     public async Task Get()
     {
         if (!HttpContext.WebSockets.IsWebSocketRequest)
