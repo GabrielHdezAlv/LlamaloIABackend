@@ -53,4 +53,30 @@ public class ElevenLabsService
 
         return await response.Content.ReadAsStreamAsync();
     }
+    
+    public async IAsyncEnumerable<byte[]> GenerateAudioStreamChunks(string text, string voiceId = "defaultVoiceId")
+    {
+        // Genera el audio completo como Stream
+        await using var stream = await GenerateAudioStreamAsync(text, voiceId);
+
+        int chunkSize = 32000; // 32 KB por chunk (ajusta según tu necesidad)
+        var buffer = new byte[chunkSize];
+
+        int bytesRead;
+        while ((bytesRead = await stream.ReadAsync(buffer, 0, buffer.Length)) > 0)
+        {
+            if (bytesRead < chunkSize)
+            {
+                // Si el último chunk es más pequeño, recortarlo
+                var lastChunk = new byte[bytesRead];
+                Array.Copy(buffer, 0, lastChunk, 0, bytesRead);
+                yield return lastChunk;
+            }
+            else
+            {
+                yield return buffer;
+                buffer = new byte[chunkSize]; // Reiniciar buffer para siguiente lectura
+            }
+        }
+    }
 }
