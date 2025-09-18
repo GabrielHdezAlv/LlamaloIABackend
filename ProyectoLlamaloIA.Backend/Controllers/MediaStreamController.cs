@@ -75,7 +75,7 @@ public class MediaStreamController : ControllerBase
 
                 // Procesar paquete Twilio
                 var json = Encoding.UTF8.GetString(buffer, 0, result.Count);
-                Console.WriteLine($"📥 Mensaje recibido de Twilio: {json}");
+                //Console.WriteLine($"📥 Mensaje recibido de Twilio: {json}");
                 var msg = JsonSerializer.Deserialize<TwilioMediaEvent>(json);
 
                 if (msg == null) continue;
