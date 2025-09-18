@@ -100,6 +100,7 @@ public class VoiceController : ControllerBase
         start.Stream(url: "wss://llamaloiabackend.onrender.com/voice/stream");
         response.Append(start);
 
+        // 👀 Importante: NO redirigimos a /record ni /process
         return Content(response.ToString(), "application/xml");
     }
     
