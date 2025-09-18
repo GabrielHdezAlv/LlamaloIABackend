@@ -1,7 +1,86 @@
 using System.Net.Http.Headers;
+using System.Net.WebSockets;
+using System.Text;
 using System.Text.Json;
 
 namespace ProyectoLlamaloIA.Backend.Services;
+
+
+public class DeepgramStreamingSession : IAsyncDisposable
+{
+    private readonly ClientWebSocket _ws;
+    private readonly Uri _uri = new("wss://api.deepgram.com/v1/listen?language=es&punctuate=true&interim_results=true");
+    private readonly CancellationTokenSource _cts = new();
+    private readonly Task _listenerTask;
+
+    public event Action<string, bool>? OnTranscript; 
+    // (texto, isFinal)
+
+    public DeepgramStreamingSession(string apiKey)
+    {
+        _ws = new ClientWebSocket();
+        _ws.Options.SetRequestHeader("Authorization", $"Token {apiKey}");
+
+        // Abrir conexión
+        _ws.ConnectAsync(_uri, CancellationToken.None).Wait();
+
+        // Empieza listener de mensajes
+        _listenerTask = Task.Run(ReceiveLoopAsync);
+    }
+
+    public async Task SendAudioAsync(byte[] audioData)
+    {
+        // Audio debe ser PCM16 16khz mono (lo que Twilio MediaStream entrega si lo configuras)
+        await _ws.SendAsync(
+            new ArraySegment<byte>(audioData),
+            WebSocketMessageType.Binary,
+            endOfMessage: true,
+            cancellationToken: _cts.Token
+        );
+    }
+
+    private async Task ReceiveLoopAsync()
+    {
+        var buffer = new byte[8192];
+        while (!_cts.IsCancellationRequested)
+        {
+            var result = await _ws.ReceiveAsync(buffer, _cts.Token);
+            if (result.MessageType == WebSocketMessageType.Close)
+                break;
+
+            var msg = Encoding.UTF8.GetString(buffer, 0, result.Count);
+            try
+            {
+                using var doc = JsonDocument.Parse(msg);
+                var isFinal = doc.RootElement.GetProperty("is_final").GetBoolean();
+                var transcript = doc.RootElement
+                    .GetProperty("channel")
+                    .GetProperty("alternatives")[0]
+                    .GetProperty("transcript")
+                    .GetString();
+
+                if (!string.IsNullOrEmpty(transcript))
+                {
+                    OnTranscript?.Invoke(transcript, isFinal);
+                }
+            }
+            catch
+            {
+                // Ignorar mensajes que no son transcripciones
+            }
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        _cts.Cancel();
+        try
+        {
+            await _ws.CloseAsync(WebSocketCloseStatus.NormalClosure, "done", CancellationToken.None);
+        }
+        catch { /* swallow */ }
+    }
+}
 
 public class DeepgramService
 {
@@ -15,6 +94,14 @@ public class DeepgramService
         _httpClient = new HttpClient();
         _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Token", _apiKey);
         _logger = logger;
+    }
+    
+    public async Task<DeepgramStreamingSession> OpenStreamingSessionAsync(Action<string, bool>? onTranscript = null)
+    {
+        var session = new DeepgramStreamingSession(_apiKey);
+        if (onTranscript != null)
+            session.OnTranscript += onTranscript;
+        return session;
     }
     
     public async Task<string> TranscribeFromUrlAsync(string audioUrl)
