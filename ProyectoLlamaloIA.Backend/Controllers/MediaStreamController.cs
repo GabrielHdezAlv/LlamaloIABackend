@@ -8,19 +8,22 @@ using ProyectoLlamaloIA.Backend.Services;
 
 namespace ProyectoLlamaloIA.Backend.Controllers;
 
-
 [Route("voice/stream")]
 [ApiController]
 public class MediaStreamController : ControllerBase
 {
     private readonly DeepgramService _deepgram;
+    private readonly GPTService _gpt;
+    private readonly ElevenLabsService _eleven;
 
-    public MediaStreamController(DeepgramService deepgram)
+    public MediaStreamController(DeepgramService deepgram, GPTService gpt, ElevenLabsService eleven)
     {
         _deepgram = deepgram;
+        _gpt = gpt;
+        _eleven = eleven;
     }
 
-    [HttpGet]
+    [HttpPost]
     public async Task Get()
     {
         if (!HttpContext.WebSockets.IsWebSocketRequest)
@@ -31,48 +34,55 @@ public class MediaStreamController : ControllerBase
 
         using var ws = await HttpContext.WebSockets.AcceptWebSocketAsync();
 
-        // Abrir sesión de streaming con Deepgram
-        await using var session = await _deepgram.OpenStreamingSessionAsync((text, isFinal) =>
+        // Abrimos sesión de streaming con Deepgram
+        await using var session = await _deepgram.OpenStreamingSessionAsync(async (text, isFinal) =>
         {
-            Console.WriteLine($"🎤 {text} (final={isFinal})");
+            if (string.IsNullOrWhiteSpace(text)) return;
+
+            Console.WriteLine($"🎤 Transcripción parcial: {text} (final={isFinal})");
+
+            // Debounce opcional: esperar a que sea final o unos ms para no saturar GPT
+            if (!isFinal) return;
+
+            // Llamada a GPT
+            var reply = await _gpt.GetReply(text);
+
+            // Generar audio y enviar a Twilio en chunks
+            await foreach (var chunk in _eleven.GenerateAudioStreamChunks(reply))
+            {
+                if (ws.State != WebSocketState.Open) break;
+
+                var base64 = Convert.ToBase64String(chunk);
+                var payload = JsonSerializer.Serialize(new
+                {
+                    @event = "media",
+                    media = new { payload = base64 }
+                });
+                var bytes = Encoding.UTF8.GetBytes(payload);
+                await ws.SendAsync(bytes, WebSocketMessageType.Text, true, CancellationToken.None);
+            }
         });
 
         var buffer = new byte[8192];
-        var sb = new StringBuilder();
 
         try
         {
             while (ws.State == WebSocketState.Open)
             {
-                var result = await ws.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
+                var result = await ws.ReceiveAsync(buffer, CancellationToken.None);
 
-                if (result.MessageType == WebSocketMessageType.Close)
-                    break;
+                if (result.MessageType == WebSocketMessageType.Close) break;
 
-                sb.Append(Encoding.UTF8.GetString(buffer, 0, result.Count));
+                // Procesar paquete Twilio
+                var json = Encoding.UTF8.GetString(buffer, 0, result.Count);
+                var msg = JsonSerializer.Deserialize<TwilioMediaEvent>(json);
 
-                if (result.EndOfMessage)
+                if (msg?.Event == "media" && msg.Media != null)
                 {
-                    try
-                    {
-                        var json = sb.ToString();
-                        sb.Clear();
+                    var pcm16k = MuLawDecoder.DecodeAndResampleTo16kHz(msg.Media.PayloadBytes);
 
-                        var msg = JsonSerializer.Deserialize<TwilioMediaEvent>(json);
-
-                        if (msg?.Event == "media" && msg.Media != null)
-                        {
-                            // Usar la propiedad PayloadBytes directamente
-                            var pcm16_16k = MuLawDecoder.DecodeAndResampleTo16kHz(msg.Media.PayloadBytes);
-
-                            await session.SendAudioAsync(pcm16_16k);
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine($"⚠️ Error procesando evento Twilio: {ex.Message}");
-                        sb.Clear(); // limpiar buffer para siguiente mensaje
-                    }
+                    // Enviar a Deepgram para transcripción en tiempo real
+                    await session.SendAudioAsync(pcm16k);
                 }
             }
         }
@@ -88,7 +98,7 @@ public class MediaStreamController : ControllerBase
     }
 }
 
-// Ajuste en MediaPayload
+// Payload Twilio
 public class TwilioMediaEvent
 {
     public string Event { get; set; } = "";
@@ -98,6 +108,5 @@ public class TwilioMediaEvent
 public class MediaPayload
 {
     public string Payload { get; set; } = "";
-
     public byte[] PayloadBytes => Convert.FromBase64String(Payload);
 }

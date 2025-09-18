@@ -71,7 +71,6 @@ public class VoiceController : ControllerBase
         return null;
     }
     
-    // Paso 1: llamada entrante
     [HttpPost("incoming")]
     public async Task<IActionResult> IncomingCall([FromForm] string To)
     {
@@ -93,16 +92,17 @@ public class VoiceController : ControllerBase
         var agent = matchingDoc.ConvertTo<AgentConfig>();
         var welcomeUrl = agent.Twilio["firstInteractionUrl"].ToString();
 
-        // 🔹 Inicia el streaming de audio hacia tu MediaStreamController
+        // 🔹 Inicia streaming de audio hacia MediaStreamController
         var start = new Start();
         start.Stream(url: "wss://llamaloiabackend.onrender.com/voice/stream");
         response.Append(start);
 
-        // 🔹 Reproduce audio de bienvenida
+        // 🔹 Reproduce audio de bienvenida **solo si quieres**.  
+        //    Se puede eliminar si quieres que todo sea streaming en tiempo real
         response.Play(new Uri(welcomeUrl));
 
-        // 🔹 Fallback: redirigir a grabación tradicional
-        response.Redirect(new Uri("/voice/record", UriKind.Relative));
+        // 🔹 ⚠️ Eliminamos la redirección a /voice/record para no esperar grabación
+        // response.Redirect(new Uri("/voice/record", UriKind.Relative));
 
         return Content(response.ToString(), "application/xml");
     }
