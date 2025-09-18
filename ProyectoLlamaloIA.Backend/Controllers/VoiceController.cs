@@ -100,8 +100,8 @@ public class VoiceController : ControllerBase
         start.Stream(url: "wss://llamaloiabackend.onrender.com/voice/stream");
         response.Append(start);
 
-        // 3️⃣ Mantener la llamada abierta
-        response.Pause(length: 60); // 60 segundos de "espera" mientras tu WebSocket gestiona la interacción
+        // 3️⃣ Redirigir a record para escuchar al usuario
+        response.Redirect(new Uri($"/voice/record?To={Uri.EscapeDataString(To)}", UriKind.Relative));
 
         return Content(response.ToString(), "application/xml");
     }
@@ -119,7 +119,7 @@ public class VoiceController : ControllerBase
         response.Record(
             action: processUrl,
             method: "POST",
-            maxLength: 15,       // Cada turno dura hasta 15 segundos
+            maxLength: 5,       // Cada turno dura hasta 15 segundos
             timeout: 3,          // Finaliza si hay 1 segundo de silencio
             playBeep: false,     // Sin pitido
             trim: "trim-silence" // Elimina silencios al inicio/final
