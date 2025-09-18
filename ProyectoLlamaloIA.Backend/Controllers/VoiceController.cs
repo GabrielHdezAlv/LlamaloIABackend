@@ -89,14 +89,14 @@ public class VoiceController : ControllerBase
             response.Say("El número de agente no está configurado.", voice: "alice");
             return Content(response.ToString(), "application/xml");
         }
+        
+        // 🔹 Saludo breve para que el usuario escuche algo mientras se conecta
+        response.Say("Hola, conectando tu llamada, espera un momento...", voice: "alice");
 
         // 🔹 Inicia streaming de audio inmediato hacia MediaStreamController
         var start = new Start();
         start.Stream(url: "wss://llamaloiabackend.onrender.com/voice/stream");
         response.Append(start);
-
-        // 🔹 Saludo breve para que el usuario escuche algo mientras se conecta
-        response.Say("Hola, conectando tu llamada, espera un momento...", voice: "alice");
 
         // ✅ No usamos Play largo ni Redirect para evitar retrasos
         return Content(response.ToString(), "application/xml");
