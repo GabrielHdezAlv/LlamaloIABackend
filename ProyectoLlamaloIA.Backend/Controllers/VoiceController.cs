@@ -8,6 +8,7 @@ using ProyectoLlamaloIA.Backend.Models;
 using ProyectoLlamaloIA.Backend.Services;
 using Twilio.AspNet.Core;
 using Twilio.TwiML;
+using Twilio.TwiML.Voice;
 using Twilio.Types;
 
 namespace ProyectoLlamaloIA.Backend.Controllers;
@@ -78,31 +79,10 @@ public class VoiceController : ControllerBase
 
         var response = new VoiceResponse();
 
-        var normalizedTo = NormalizeNumber(To);
-
+        // Buscar agente en Firestore
         var agentsRef = _firestore.Collection("users");
         var snapshot = await agentsRef.GetSnapshotAsync();
-
-        DocumentSnapshot? matchingDoc = null;
-
-        foreach (var doc in snapshot.Documents)
-        {
-            if (doc.TryGetValue<Dictionary<string, object>>("twilio", out var twilioData))
-            {
-                if (twilioData.TryGetValue("countryCode", out var countryCodeObj) &&
-                    twilioData.TryGetValue("phoneNumber", out var phoneNumberObj))
-                {
-                    var fullNumber = $"{countryCodeObj}{phoneNumberObj}";
-                    var normalizedFullNumber = NormalizeNumber(fullNumber);
-
-                    if (normalizedFullNumber == normalizedTo)
-                    {
-                        matchingDoc = doc;
-                        break;
-                    }
-                }
-            }
-        }
+        var matchingDoc = FindAgentByPhone(snapshot.Documents, To);
 
         if (matchingDoc == null)
         {
@@ -113,7 +93,15 @@ public class VoiceController : ControllerBase
         var agent = matchingDoc.ConvertTo<AgentConfig>();
         var welcomeUrl = agent.Twilio["firstInteractionUrl"].ToString();
 
+        // 🔹 Inicia el streaming de audio hacia tu MediaStreamController
+        var start = new Start();
+        start.Stream(url: "wss://llamaloiabackend.onrender.com/voice/stream");
+        response.Append(start);
+
+        // 🔹 Reproduce audio de bienvenida
         response.Play(new Uri(welcomeUrl));
+
+        // 🔹 Fallback: redirigir a grabación tradicional
         response.Redirect(new Uri("/voice/record", UriKind.Relative));
 
         return Content(response.ToString(), "application/xml");
