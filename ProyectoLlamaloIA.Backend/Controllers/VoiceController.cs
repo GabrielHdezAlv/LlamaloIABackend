@@ -119,8 +119,8 @@ public class VoiceController : ControllerBase
         response.Record(
             action: processUrl,
             method: "POST",
-            maxLength: 3,       // Cada turno dura hasta 3 segundos
-            timeout: 2,          // Finaliza si hay 1 segundo de silencio
+            maxLength: 2,       // Cada turno dura hasta 3 segundos
+            timeout: 1,          // Finaliza si hay 1 segundo de silencio
             playBeep: false,     // Sin pitido
             trim: "trim-silence" // Elimina silencios al inicio/final
         );
