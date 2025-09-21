@@ -119,7 +119,7 @@ public class VoiceController : ControllerBase
         response.Record(
             action: processUrl,
             method: "POST",
-            maxLength: 5,       // Cada turno dura hasta 15 segundos
+            maxLength: 5,       // Cada turno dura hasta 5 segundos
             timeout: 3,          // Finaliza si hay 1 segundo de silencio
             playBeep: false,     // Sin pitido
             trim: "trim-silence" // Elimina silencios al inicio/final
@@ -198,13 +198,25 @@ public class VoiceController : ControllerBase
         if (transcript.ToLower().Contains("gracias") || transcript.ToLower().Contains("ya está") || transcript.ToLower().Contains("eso es todo"))
         {
             _logger.LogInformation("📞 Usuario terminó la llamada con: \"{Transcript}\"", transcript);
-            response.Say("Gracias por tu llamada. Hasta pronto.");
+            var farewell = "Gracias por tu llamada. Hasta pronto.";
+            var audStream = await _elevenService.GenerateAudioStreamAsync(farewell, agent.Agent["labsId"].ToString());
+            var audUrl = await _firebaseService.UploadAudioAsync(agent.UserId, audStream);
+
+            response.Play(new Uri(audUrl));
             return Content(response.ToString(), "application/xml");
         }
         
         if (string.IsNullOrWhiteSpace(transcript))
         {
             _logger.LogWarning("⚠️ La transcripción está vacía. No se detectó habla en la grabación.");
+            var retry = "No pude escucharte claramente. ¿Puedes repetirlo?";
+            var audStream = await _elevenService.GenerateAudioStreamAsync(retry, agent.Agent["labsId"].ToString());
+            var audUrl = await _firebaseService.UploadAudioAsync(agent.UserId, audStream);
+
+            response.Play(new Uri(audUrl));
+            response.Redirect(new Uri("/voice/record", UriKind.Relative));
+            return Content(response.ToString(), "application/xml");
+            
             response.Say("No pude escucharte claramente. ¿Puedes repetirlo?");
             response.Redirect(new Uri("/voice/record", UriKind.Relative));
             return Content(response.ToString(), "application/xml");
