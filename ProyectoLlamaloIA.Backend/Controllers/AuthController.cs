@@ -225,7 +225,7 @@ public class AuthController : ControllerBase
                 enterprise = updatedData["enterprise"],
                 enterpriseWeb = updatedData["enterpriseWeb"],
                 email = updatedData["email"],
-                createdAt = updatedData["createdAt"]
+                createdAt = updatedData["createdAt"],
             });
         }
         catch (Exception ex)
@@ -236,73 +236,46 @@ public class AuthController : ControllerBase
     
     [HttpPost("profile/image")]
     [Authorize]
-    public async Task<IActionResult> UploadProfileImage([FromForm] IFormFile image)
+    [Consumes("multipart/form-data")]
+    public async Task<IActionResult> UploadProfileImage([FromForm] UploadProfileImageDto dto)
     {
-        try
-        {
-            // 1️⃣ Obtener UID del usuario autenticado SOLO del token
-            string? userId = User.FindFirst("user_id")?.Value
-                            ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value
-                            ?? User.FindFirst("sub")?.Value;
+        var image = dto.Image;
 
-            if (string.IsNullOrEmpty(userId))
-                return Unauthorized(new { message = "Token inválido o expirado" });
+        if (image == null || image.Length == 0)
+            return BadRequest(new { message = "Debe enviarse un archivo de imagen" });
 
-            // 2️⃣ Validar archivo
-            if (image == null || image.Length == 0)
-                return BadRequest(new { message = "Debe enviarse un archivo de imagen" });
+        if (image.Length > 5 * 1024 * 1024)
+            return BadRequest(new { message = "La imagen no puede superar los 5MB" });
 
-            if (image.Length > 5 * 1024 * 1024)
-                return BadRequest(new { message = "La imagen no puede superar los 5MB" });
+        var allowedTypes = new[] { "image/png", "image/jpeg", "image/jpg" };
+        if (!allowedTypes.Contains(image.ContentType))
+            return BadRequest(new { message = "Formato de imagen no permitido. Use PNG o JPG" });
 
-            var allowedTypes = new[] { "image/png", "image/jpeg", "image/jpg" };
-            if (!allowedTypes.Contains(image.ContentType))
-                return BadRequest(new { message = "Formato de imagen no permitido. Use PNG o JPG" });
+        var bucket = _configuration["Firebase:StorageBucket"];
+        var storage = StorageClient.Create();
+        string extension = Path.GetExtension(image.FileName);
+        string objectName = $"profile-images/{User.FindFirstValue("sub")}{extension}";
 
-            // 3️⃣ Configuración Firebase Storage
-            var bucket = _configuration["Firebase:StorageBucket"];
-            var storage = StorageClient.Create();
-            string extension = Path.GetExtension(image.FileName);
-            string objectName = $"profile-images/{userId}{extension}"; 
+        // Eliminar anterior si existe
+        var objects = storage.ListObjects(bucket, $"profile-images/{User.FindFirstValue("sub")}");
+        foreach (var obj in objects)
+            await storage.DeleteObjectAsync(bucket, obj.Name);
 
-            // Eliminar anterior si existe
-            var objects = storage.ListObjects(bucket, $"profile-images/{userId}");
-            foreach (var obj in objects)
-            {
-                await storage.DeleteObjectAsync(bucket, obj.Name);
-            }
+        using var stream = image.OpenReadStream();
+        await storage.UploadObjectAsync(
+            bucket,
+            objectName,
+            image.ContentType,
+            stream,
+            new UploadObjectOptions { PredefinedAcl = PredefinedObjectAcl.PublicRead }
+        );
 
-            // Subir nueva imagen pública
-            using var stream = image.OpenReadStream();
-            await storage.UploadObjectAsync(
-                bucket,
-                objectName,
-                image.ContentType,
-                stream,
-                new UploadObjectOptions { PredefinedAcl = PredefinedObjectAcl.PublicRead }
-            );
+        var imageUrl = $"https://storage.googleapis.com/{bucket}/{objectName}";
 
-            // Construir URL pública
-            var imageUrl = $"https://storage.googleapis.com/{bucket}/{objectName}";
+        var userDocRef = _firestoreDb.Collection("users").Document(User.FindFirstValue("sub"));
+        await userDocRef.UpdateAsync(new Dictionary<string, object> { { "profileImage", imageUrl } });
 
-            // 4️⃣ Actualizar Firestore en campo plano "profileImage"
-            var userDocRef = _firestoreDb.Collection("users").Document(userId);
-            await userDocRef.UpdateAsync(new Dictionary<string, object>
-            {
-                { "profileImage", imageUrl }
-            });
-
-            // 5️⃣ Respuesta
-            return Ok(new
-            {
-                message = "Imagen de perfil actualizada correctamente",
-                imageUrl
-            });
-        }
-        catch (Exception ex)
-        {
-            return BadRequest(new { message = "Error al subir la imagen de perfil", error = ex.Message });
-        }
+        return Ok(new { message = "Imagen de perfil actualizada correctamente", imageUrl });
     }
 
     // ✅ 3️⃣ Obtener datos del usuario autenticado 🔐

@@ -23,13 +23,11 @@ public class UserController : ControllerBase
     {
         try
         {
-            // Obtener el UID del usuario autenticado a partir del token JWT
             string userId = User.FindFirst("user_id")?.Value ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? User.FindFirst("sub")?.Value;
 
             if (string.IsNullOrEmpty(userId))
                 return Unauthorized(new { message = "Token inválido o expirado" });
 
-            // Obtener los datos del usuario desde Firestore
             DocumentReference docRef = _firestoreDb.Collection("users").Document(userId);
             DocumentSnapshot snapshot = await docRef.GetSnapshotAsync();
 
@@ -37,6 +35,19 @@ public class UserController : ControllerBase
                 return NotFound(new { message = "Usuario no encontrado en Firestore" });
 
             var userData = snapshot.ToDictionary();
+
+            // ✅ Convertir createdAt a string legible
+            string? createdAtStr = null;
+            if (userData.TryGetValue("createdAt", out var tsObj) && tsObj is Google.Cloud.Firestore.Timestamp ts)
+            {
+                createdAtStr = ts.ToDateTime().ToString(
+                    "dd 'de' MMMM 'de' yyyy, h:mm:ss tt",
+                    new System.Globalization.CultureInfo("es-ES")
+                );
+
+                // Mostrar por consola para verificar
+                Console.WriteLine($"createdAtStr: {createdAtStr}");
+            }
 
             return Ok(new
             {
@@ -47,7 +58,7 @@ public class UserController : ControllerBase
                 enterprise = userData["enterprise"],
                 enterpriseWeb = userData["enterpriseWeb"],
                 email = userData["email"],
-                createdAt = userData["createdAt"],
+                createdAt = createdAtStr, // ahora es string legible
                 twilio = userData["twilio"],
                 agent = userData["agent"],
             });

@@ -123,6 +123,76 @@ public class TwilioController : ControllerBase
         }
     }
     
+    [HttpGet("minutes-inbound")]
+    [Authorize]
+    public async Task<IActionResult> GetInboundMinutes()
+    {
+        try
+        {
+            // Obtener UID del usuario autenticado
+            string userId = User.FindFirst("user_id")?.Value ?? 
+                            User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? 
+                            User.FindFirst("sub")?.Value;
+
+            if (string.IsNullOrEmpty(userId))
+                return Unauthorized(new { message = "Token inválido o expirado" });
+
+            // Referencia al documento del usuario
+            DocumentReference userDocRef = _firestoreDb.Collection("users").Document(userId);
+            DocumentSnapshot userSnapshot = await userDocRef.GetSnapshotAsync();
+
+            if (!userSnapshot.Exists || !userSnapshot.TryGetValue<object>("twilio", out var twilio))
+                return NotFound(new { message = "Configuración de Twilio no encontrada." });
+
+            var twilioConfig = twilio as Dictionary<string, object>;
+            if (twilioConfig == null)
+                return BadRequest(new { message = "Formato de configuración de Twilio incorrecto." });
+
+            string sid = twilioConfig["twilioSid"]?.ToString();
+            string token = twilioConfig["twilioToken"]?.ToString();
+
+            if (string.IsNullOrEmpty(sid) || string.IsNullOrEmpty(token))
+                return BadRequest(new { message = "Credenciales de Twilio no configuradas correctamente." });
+
+            using (var client = new HttpClient())
+            {
+                var byteArray = Encoding.ASCII.GetBytes($"{sid}:{token}");
+                client.DefaultRequestHeaders.Authorization =
+                    new System.Net.Http.Headers.AuthenticationHeaderValue("Basic", Convert.ToBase64String(byteArray));
+
+                // Consumo de este mes
+                var response = await client.GetAsync($"https://api.twilio.com/2010-04-01/Accounts/{sid}/Usage/Records/ThisMonth.json");
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    _logger.LogWarning("Error al obtener consumo inbound de Twilio. Status: {StatusCode}", response.StatusCode);
+                    return BadRequest(new { message = "No se pudo obtener el consumo de minutos inbound desde Twilio." });
+                }
+
+                var content = await response.Content.ReadAsStringAsync();
+                var json = System.Text.Json.JsonDocument.Parse(content);
+
+                // Buscar solo las llamadas entrantes
+                var inbound = json.RootElement.GetProperty("usage_records")
+                                .EnumerateArray()
+                                .FirstOrDefault(x => x.GetProperty("category").GetString() == "calls-inbound");
+
+                if (inbound.ValueKind == System.Text.Json.JsonValueKind.Undefined)
+                    return Ok(new { minutes = 0, message = "No hay consumo de llamadas entrantes registrado." });
+
+                string usage = inbound.GetProperty("usage").GetString();       // número de minutos
+                string unit = inbound.GetProperty("usage_unit").GetString();   // normalmente "minutes"
+
+                return Ok(new { minutes = usage, unit });
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error al obtener los minutos de llamadas entrantes en Twilio.");
+            return BadRequest(new { message = "Error al obtener minutos de Twilio", error = ex.Message });
+        }
+    }
+        
     [HttpGet("info")]
     [Authorize]
     public async Task<IActionResult> GetTwilioConfig()
