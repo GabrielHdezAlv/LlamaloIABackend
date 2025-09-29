@@ -89,7 +89,40 @@ public class VoiceController : ControllerBase
             return Content(response.ToString(), "application/xml");
         }
 
+        // ✅ Verificar antigüedad de la cuenta
+        if (matchingDoc.TryGetValue<Google.Cloud.Firestore.Timestamp>("createdAt", out var createdAtTimestamp))
+        {
+            var createdAt = createdAtTimestamp.ToDateTime();
+            var accountAge = DateTime.UtcNow - createdAt;
+
+            if (accountAge.TotalDays >= 7)
+            {
+                _logger.LogWarning("❌ Cuenta con {Days} días de antigüedad. No se permite la llamada.", accountAge.TotalDays);
+                response.Say("Su cuenta tiene más de 7 días de antigüedad. No puede realizar esta llamada.", voice: "alice");
+                return Content(response.ToString(), "application/xml");
+            }
+        }
+
+        // ✅ Validar minutos consumidos
         var agent = matchingDoc.ConvertTo<AgentConfig>();
+
+        if (agent.Twilio.TryGetValue("twilioSid", out var sidObj) &&
+            agent.Twilio.TryGetValue("twilioToken", out var tokenObj))
+        {
+            var minutes = await GetTwilioMinutesAsync(sidObj.ToString(), tokenObj.ToString());
+
+            if (minutes >= 30)
+            {
+                _logger.LogWarning("❌ Usuario ha consumido {Minutes} minutos. No se permite la llamada.", minutes);
+                response.Say("Ha superado los 30 minutos de llamadas permitidos. No puede realizar esta llamada.", voice: "alice");
+                return Content(response.ToString(), "application/xml");
+            }
+        }
+        else
+        {
+            _logger.LogError("❌ Faltan credenciales Twilio del agente para validar minutos.");
+        }
+        
         var firstInteractionUrl = agent.Twilio["firstInteractionUrl"].ToString();
 
         // 1️⃣ Reproducir audio de bienvenida
@@ -105,6 +138,37 @@ public class VoiceController : ControllerBase
 
         return Content(response.ToString(), "application/xml");
     }
+    
+    private async Task<double> GetTwilioMinutesAsync(string sid, string token)
+    {
+        using var client = new HttpClient();
+        var byteArray = Encoding.ASCII.GetBytes($"{sid}:{token}");
+        client.DefaultRequestHeaders.Authorization =
+            new System.Net.Http.Headers.AuthenticationHeaderValue("Basic", Convert.ToBase64String(byteArray));
+
+        // Consumo de este mes
+        var response = await client.GetAsync($"https://api.twilio.com/2010-04-01/Accounts/{sid}/Usage/Records/ThisMonth.json");
+        if (!response.IsSuccessStatusCode)
+            return 0;
+
+        var content = await response.Content.ReadAsStringAsync();
+        var json = System.Text.Json.JsonDocument.Parse(content);
+
+        // Buscar el registro de llamadas (total)
+        var calls = json.RootElement.GetProperty("usage_records")
+            .EnumerateArray()
+            .FirstOrDefault(x => x.GetProperty("category").GetString() == "calls");
+
+        if (calls.ValueKind == System.Text.Json.JsonValueKind.Undefined)
+            return 0;
+
+        // Retornar minutos consumidos como double
+        if (double.TryParse(calls.GetProperty("usage").GetString(), out var minutes))
+            return minutes;
+
+        return 0;
+    }
+
     
     // Paso 2: grabar al usuario
     [HttpPost("record")]
