@@ -23,11 +23,14 @@ public class TwilioInfo
     [FirestoreProperty("firstInteractionUrl")]
     public string? FirstInteractionUrl { get; set; }
     
+    [FirestoreProperty("agentInstruction")]
+    public string? AgentInstruction { get; set; }
+    
     // ✅ Constructor vacío necesario para Firestore
     public TwilioInfo() {}
 
     // Constructor para inicializar las propiedades de TwilioInfo
-    public TwilioInfo(string countryCode, long phoneNumber, string twilioSid, string twilioToken, string firstInteraction, string firstInteractionUrl)
+    public TwilioInfo(string countryCode, long phoneNumber, string twilioSid, string twilioToken, string firstInteraction, string firstInteractionUrl, string agentInstruction)
     {
         CountryCode = countryCode;
         PhoneNumber = phoneNumber;
@@ -35,5 +38,6 @@ public class TwilioInfo
         TwilioToken = twilioToken;
         FirstInteraction = firstInteraction;
         FirstInteractionUrl = firstInteractionUrl;
+        AgentInstruction = agentInstruction;
     }
 }
