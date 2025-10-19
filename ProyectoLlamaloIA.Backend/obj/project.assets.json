@@ -351,6 +351,19 @@
           }
         }
       },
+      "libphonenumber-csharp/9.0.16": {
+        "type": "package",
+        "compile": {
+          "lib/net9.0/PhoneNumbers.dll": {
+            "related": ".xml"
+          }
+        },
+        "runtime": {
+          "lib/net9.0/PhoneNumbers.dll": {
+            "related": ".xml"
+          }
+        }
+      },
       "Microsoft.AspNetCore.Authentication/2.3.0": {
         "type": "package",
         "dependencies": {
@@ -3148,6 +3161,25 @@
         "lib/netstandard2.0/Humanizer.dll",
         "lib/netstandard2.0/Humanizer.xml",
         "logo.png"
+      ]
+    },
+    "libphonenumber-csharp/9.0.16": {
+      "sha512": "ztFjApuuPROcKx3w3AMUX+AQcectx5GA2JQ/h+iQE325Zgd95taukaQufiQR2lXW7QMGrB0tZgEWAkEQHg2Snw==",
+      "type": "package",
+      "path": "libphonenumber-csharp/9.0.16",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "README.md",
+        "icon.png",
+        "lib/net8.0/PhoneNumbers.dll",
+        "lib/net8.0/PhoneNumbers.xml",
+        "lib/net9.0/PhoneNumbers.dll",
+        "lib/net9.0/PhoneNumbers.xml",
+        "lib/netstandard2.0/PhoneNumbers.dll",
+        "lib/netstandard2.0/PhoneNumbers.xml",
+        "libphonenumber-csharp.9.0.16.nupkg.sha512",
+        "libphonenumber-csharp.nuspec"
       ]
     },
     "Microsoft.AspNetCore.Authentication/2.3.0": {
@@ -7758,7 +7790,8 @@
       "Npgsql.EntityFrameworkCore.PostgreSQL >= 9.0.2",
       "Swashbuckle.AspNetCore >= 7.2.0",
       "System.IdentityModel.Tokens.Jwt >= 8.3.1",
-      "Twilio.AspNet.Core >= 8.1.1"
+      "Twilio.AspNet.Core >= 8.1.1",
+      "libphonenumber-csharp >= 9.0.16"
     ]
   },
   "packageFolders": {
@@ -7877,6 +7910,10 @@
           "Twilio.AspNet.Core": {
             "target": "Package",
             "version": "[8.1.1, )"
+          },
+          "libphonenumber-csharp": {
+            "target": "Package",
+            "version": "[9.0.16, )"
           }
         },
         "imports": [

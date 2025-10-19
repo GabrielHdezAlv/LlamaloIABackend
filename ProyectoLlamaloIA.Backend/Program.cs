@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using ProyectoLlamaloIA.Backend.Services;
 using Microsoft.OpenApi.Models;
 using FirebaseAdmin;
 using Google.Apis.Auth.OAuth2;
@@ -11,7 +12,6 @@ using ProyectoLlamaloIA.Backend.Repository;
 using System.IO;
 using Google.Cloud.Firestore;
 using Microsoft.IdentityModel.Logging;
-using ProyectoLlamaloIA.Backend.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -147,6 +147,8 @@ builder.Services.AddScoped<DeepgramService>();
 builder.Services.AddScoped<GPTService>();
 builder.Services.AddScoped<ElevenLabsService>();
 //builder.Services.AddSingleton<TaskRepository>(); // 🔹 Inyectar el repositorio de tareas
+
+builder.Services.AddSingleton<ITwilioVoiceMetricsService, TwilioVoiceMetricsService>();
 
 var app = builder.Build();
 

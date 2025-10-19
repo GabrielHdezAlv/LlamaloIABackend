@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "dgSpecHash": "pannR4HzW9g=",
+  "dgSpecHash": "gnUqoiJ5CFs=",
   "success": true,
   "projectFilePath": "/Users/gabrielhdez/Documents/GitHub/LlamaloIABackend/ProyectoLlamaloIA.Backend/ProyectoLlamaloIA.Backend.csproj",
   "expectedPackageFiles": [
@@ -25,6 +25,7 @@
     "/Users/gabrielhdez/.nuget/packages/grpc.net.client/2.66.0/grpc.net.client.2.66.0.nupkg.sha512",
     "/Users/gabrielhdez/.nuget/packages/grpc.net.common/2.66.0/grpc.net.common.2.66.0.nupkg.sha512",
     "/Users/gabrielhdez/.nuget/packages/humanizer.core/2.14.1/humanizer.core.2.14.1.nupkg.sha512",
+    "/Users/gabrielhdez/.nuget/packages/libphonenumber-csharp/9.0.16/libphonenumber-csharp.9.0.16.nupkg.sha512",
     "/Users/gabrielhdez/.nuget/packages/microsoft.aspnetcore.authentication/2.3.0/microsoft.aspnetcore.authentication.2.3.0.nupkg.sha512",
     "/Users/gabrielhdez/.nuget/packages/microsoft.aspnetcore.authentication.abstractions/2.3.0/microsoft.aspnetcore.authentication.abstractions.2.3.0.nupkg.sha512",
     "/Users/gabrielhdez/.nuget/packages/microsoft.aspnetcore.authentication.cookies/2.3.0/microsoft.aspnetcore.authentication.cookies.2.3.0.nupkg.sha512",

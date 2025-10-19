@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("ProyectoLlamaloIA.Backend")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+6d32ded43c187d8a182979dd203018b311ad1209")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+cb46941813b28bbff6646274b6480bc400b92fae")]
 [assembly: System.Reflection.AssemblyProductAttribute("ProyectoLlamaloIA.Backend")]
 [assembly: System.Reflection.AssemblyTitleAttribute("ProyectoLlamaloIA.Backend")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
