@@ -306,8 +306,6 @@ public class VoiceController : ControllerBase
 
         return Content(response.ToString(), "application/xml");
     }
-    
-    
 }
 
 public class TwilioMediaEventVoice
