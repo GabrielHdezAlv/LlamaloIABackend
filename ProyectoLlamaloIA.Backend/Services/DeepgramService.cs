@@ -1,4 +1,3 @@
-using System;
 using System.Net.Http.Headers;
 using System.Net.WebSockets;
 using System.Text;
@@ -129,14 +128,11 @@ public class DeepgramService
         }
     }
 
-    public async Task<string> TranscribeFromStreamAsync(Stream audioStream, string? mediaType = null)
+    public async Task<string> TranscribeFromStreamAsync(Stream audioStream)
     {
         var requestUrl = "https://api.deepgram.com/v1/listen?language=es&punctuate=true&detect_language=false";
         var content = new StreamContent(audioStream);
-        var contentType = string.IsNullOrWhiteSpace(mediaType) ? "audio/mpeg" : mediaType;
-        if (string.Equals(contentType, "audio/x-wav", StringComparison.OrdinalIgnoreCase))
-            contentType = "audio/wav";
-        content.Headers.ContentType = new MediaTypeHeaderValue(contentType);
+        content.Headers.ContentType = new MediaTypeHeaderValue("audio/mpeg");
 
         var response = await _httpClient.PostAsync(requestUrl, content);
         if (!response.IsSuccessStatusCode)

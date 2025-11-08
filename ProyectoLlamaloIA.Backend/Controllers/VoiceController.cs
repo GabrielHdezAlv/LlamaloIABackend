@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using System.Net.WebSockets;
 using System.Text;
 using Google.Cloud.Firestore;
@@ -179,14 +178,13 @@ public class VoiceController : ControllerBase
 
         var response = new VoiceResponse();
 
-        var safeTo = To ?? string.Empty;
-        var processUrl = new Uri($"/voice/process?To={Uri.EscapeDataString(safeTo)}", UriKind.Relative);
+        var processUrl = new Uri($"/voice/process?To={Uri.EscapeDataString(To)}", UriKind.Relative);
 
         response.Record(
             action: processUrl,
             method: "POST",
-            maxLength: 30,       // Permitir preguntas extensas (hasta 30 segundos por turno)
-            timeout: 2,          // Detectar fin de turno tras ~2 segundos de silencio
+            maxLength: 30,       // Cada turno dura hasta 3 segundos
+            timeout: 2,          // Finaliza si hay 1 segundo de silencio
             playBeep: false,     // Sin pitido
             trim: "trim-silence" // Elimina silencios al inicio/final
         );
@@ -199,14 +197,13 @@ public class VoiceController : ControllerBase
     public async Task<IActionResult> ProcessUser([FromForm] string RecordingUrl, [FromForm] string? To, [FromQuery] string? ToQuery)
     {
         To ??= ToQuery;
-        var safeTo = To ?? string.Empty;
         var response = new VoiceResponse();
 
         // Obtener agente
         var agentsRef = _firestore.Collection("users");
         var snapshot = await agentsRef.GetSnapshotAsync();
 
-        var normalizedTo = NormalizeNumber(safeTo);
+        var normalizedTo = NormalizeNumber(To);
         var matchingDoc = FindAgentByPhone(snapshot.Documents, normalizedTo);
 
         if (matchingDoc == null)
@@ -226,14 +223,8 @@ public class VoiceController : ControllerBase
             return Content(response.ToString(), "application/xml");
         }
 
-        var twilioSid = accountSidObj?.ToString() ?? string.Empty;
-        var twilioToken = authTokenObj?.ToString() ?? string.Empty;
-        if (string.IsNullOrWhiteSpace(twilioSid) || string.IsNullOrWhiteSpace(twilioToken))
-        {
-            _logger.LogError("❌ Credenciales de Twilio vacías para el agente.");
-            response.Say("Error de configuración del agente. No se pudo continuar.");
-            return Content(response.ToString(), "application/xml");
-        }
+        var twilioSid = accountSidObj.ToString();
+        var twilioToken = authTokenObj.ToString();
 
         // Crear request con credenciales por llamada (evita problemas de concurrencia)
         var request = new HttpRequestMessage(HttpMethod.Get, RecordingUrl);
@@ -244,9 +235,7 @@ public class VoiceController : ControllerBase
             );
 
         // Descargar la grabación en memoria
-        using var downloadResponse = await _httpClient.SendAsync(request);
-        var mediaType = downloadResponse.Content.Headers.ContentType?.MediaType ?? "audio/wav";
-        using var originalStream = await downloadResponse.Content.ReadAsStreamAsync();
+        using var originalStream = await (await _httpClient.SendAsync(request)).Content.ReadAsStreamAsync();
         using var memoryStream = new MemoryStream();
         await originalStream.CopyToAsync(memoryStream);
         memoryStream.Position = 0;
@@ -254,13 +243,8 @@ public class VoiceController : ControllerBase
         _logger.LogInformation("📥 Grabación de audio descargada y cargada en memoria. Tamaño: {Size} bytes", memoryStream.Length);
 
         // Transcribir con Deepgram
-        var timing = Stopwatch.StartNew();
-        var transcript = await _deepgramService.TranscribeFromStreamAsync(memoryStream, mediaType);
-        timing.Stop();
-        _logger.LogInformation(
-            "🎤 Deepgram transcripción completada en {ElapsedMs} ms. Texto: {Transcript}",
-            timing.ElapsedMilliseconds,
-            transcript);
+        var transcript = await _deepgramService.TranscribeFromStreamAsync(memoryStream);
+        _logger.LogInformation("🎤 Transcripción del usuario: {Transcript}", transcript);
 
         
         // Transcribir
@@ -275,29 +259,12 @@ public class VoiceController : ControllerBase
         _logger.LogInformation("🎤 Transcripción del usuario: {Transcript}", transcript);*/
 
         // Detectar intención de terminar
-        var labsId = agent.Agent.TryGetValue("labsId", out var labsIdObj)
-            ? labsIdObj?.ToString()
-            : null;
-        if (string.IsNullOrWhiteSpace(labsId))
-        {
-            _logger.LogError("❌ labsId de ElevenLabs no configurado para el agente {AgentId}", agent.UserId);
-            response.Say("Error de configuración del agente. No se pudo continuar.");
-            return Content(response.ToString(), "application/xml");
-        }
-
         if (transcript.ToLower().Contains("gracias") || transcript.ToLower().Contains("ya está") || transcript.ToLower().Contains("eso es todo"))
         {
             _logger.LogInformation("📞 Usuario terminó la llamada con: \"{Transcript}\"", transcript);
             var farewell = "Gracias por tu llamada. Hasta pronto.";
-            timing.Restart();
-            var audStream = await _elevenService.GenerateAudioStreamAsync(farewell, labsId);
-            timing.Stop();
-            _logger.LogInformation("🔊 ElevenLabs despedida generada en {ElapsedMs} ms", timing.ElapsedMilliseconds);
-
-            timing.Restart();
+            var audStream = await _elevenService.GenerateAudioStreamAsync(farewell, agent.Agent["labsId"].ToString());
             var audUrl = await _firebaseService.UploadAudioAsync(agent.UserId, audStream);
-            timing.Stop();
-            _logger.LogInformation("📤 Firebase subida despedida en {ElapsedMs} ms. URL: {AudioUrl}", timing.ElapsedMilliseconds, audUrl);
 
             response.Play(new Uri(audUrl));
             return Content(response.ToString(), "application/xml");
@@ -307,42 +274,32 @@ public class VoiceController : ControllerBase
         {
             _logger.LogWarning("⚠️ La transcripción está vacía. No se detectó habla en la grabación.");
             var retry = "No pude escucharte claramente. ¿Puedes repetirlo?";
-            timing.Restart();
-            var audStream = await _elevenService.GenerateAudioStreamAsync(retry, labsId);
-            timing.Stop();
-            _logger.LogInformation("🔊 ElevenLabs reintento generado en {ElapsedMs} ms", timing.ElapsedMilliseconds);
-
-            timing.Restart();
+            var audStream = await _elevenService.GenerateAudioStreamAsync(retry, agent.Agent["labsId"].ToString());
             var audUrl = await _firebaseService.UploadAudioAsync(agent.UserId, audStream);
-            timing.Stop();
-            _logger.LogInformation("📤 Firebase subida reintento en {ElapsedMs} ms. URL: {AudioUrl}", timing.ElapsedMilliseconds, audUrl);
 
             response.Play(new Uri(audUrl));
+            response.Redirect(new Uri("/voice/record", UriKind.Relative));
+            return Content(response.ToString(), "application/xml");
+            
+            response.Say("No pude escucharte claramente. ¿Puedes repetirlo?");
             response.Redirect(new Uri("/voice/record", UriKind.Relative));
             return Content(response.ToString(), "application/xml");
         }
 
         // Generar respuesta IA
-        timing.Restart();
         var reply = await _gptService.GetReply(transcript);
-        timing.Stop();
-        _logger.LogInformation("🧠 GPT respuesta generada en {ElapsedMs} ms", timing.ElapsedMilliseconds);
-        _logger.LogInformation("🧠 Contenido respuesta GPT: {Reply}", reply);
+        _logger.LogInformation("🧠 Respuesta generada por GPT: {Reply}", reply);
         
         // Loguear la respuesta recibida de GPT
         _logger.LogInformation("Respuesta de GPT para ElevenLabs: {Response}", reply);
 
         // Generar audio
-        timing.Restart();
-        var audioStream = await _elevenService.GenerateAudioStreamAsync(reply, labsId);
-        timing.Stop();
-        _logger.LogInformation("🔊 ElevenLabs respuesta generada en {ElapsedMs} ms", timing.ElapsedMilliseconds);
+        var audioStream = await _elevenService.GenerateAudioStreamAsync(reply, agent.Agent["labsId"].ToString());
+        _logger.LogInformation("🔊 Audio generado con ElevenLabs para el texto: \"{Reply}\"", reply);
         
         // Subir a Firebase
-        timing.Restart();
         var audioUrl = await _firebaseService.UploadAudioAsync(agent.UserId, audioStream);
-        timing.Stop();
-        _logger.LogInformation("📤 Firebase subida respuesta en {ElapsedMs} ms. URL: {AudioUrl}", timing.ElapsedMilliseconds, audioUrl);
+        _logger.LogInformation("📤 Audio subido a Firebase. URL: {AudioUrl}", audioUrl);
 
         response.Play(new Uri(audioUrl));
         response.Redirect(new Uri("/voice/record", UriKind.Relative));
