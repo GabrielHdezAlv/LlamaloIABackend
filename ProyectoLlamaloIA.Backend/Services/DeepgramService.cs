@@ -97,15 +97,7 @@ public class DeepgramService
 
     public async Task<string> TranscribeFromUrlAsync(string audioUrl)
     {
-        var requestUrl = "https://api.deepgram.com/v1/listen"
-                         + "?model=nova-2"
-                         + "&language=es"
-                         + "&smart_format=true"
-                         + "&punctuate=true"
-                         + "&utterances=false"
-                         + "&diarize=false"
-                         + "&numerals=true"
-                         + "&endpointing=2000"; // Finaliza palabra tras ~2s de silencio
+        var requestUrl = "https://api.deepgram.com/v1/listen?language=es&punctuate=true&detect_language=false";
         var payload = new { url = audioUrl };
         var content = new StringContent(JsonSerializer.Serialize(payload));
         content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
@@ -137,13 +129,14 @@ public class DeepgramService
         }
     }
 
-    public async Task<string> TranscribeFromStreamAsync(Stream audioStream, string mediaType = "audio/wav")
+    public async Task<string> TranscribeFromStreamAsync(Stream audioStream, string? mediaType = null)
     {
         var requestUrl = "https://api.deepgram.com/v1/listen?language=es&punctuate=true&detect_language=false";
         var content = new StreamContent(audioStream);
-        if (string.Equals(mediaType, "audio/x-wav", StringComparison.OrdinalIgnoreCase))
-            mediaType = "audio/wav";
-        content.Headers.ContentType = new MediaTypeHeaderValue(mediaType);
+        var contentType = string.IsNullOrWhiteSpace(mediaType) ? "audio/mpeg" : mediaType;
+        if (string.Equals(contentType, "audio/x-wav", StringComparison.OrdinalIgnoreCase))
+            contentType = "audio/wav";
+        content.Headers.ContentType = new MediaTypeHeaderValue(contentType);
 
         var response = await _httpClient.PostAsync(requestUrl, content);
         if (!response.IsSuccessStatusCode)
