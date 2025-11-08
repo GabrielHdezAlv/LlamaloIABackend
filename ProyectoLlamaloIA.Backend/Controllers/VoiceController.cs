@@ -184,7 +184,7 @@ public class VoiceController : ControllerBase
             action: processUrl,
             method: "POST",
             maxLength: 30,       // Cada turno dura hasta 3 segundos
-            timeout: 1,          // Finaliza si hay 1 segundo de silencio
+            timeout: 2,          // Finaliza si hay 1 segundo de silencio
             playBeep: false,     // Sin pitido
             trim: "trim-silence" // Elimina silencios al inicio/final
         );
