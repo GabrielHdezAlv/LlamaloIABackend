@@ -184,8 +184,8 @@ public class VoiceController : ControllerBase
         response.Record(
             action: processUrl,
             method: "POST",
-            maxLength: 15,       // Permitir preguntas extensas (hasta 15 segundos por turno)
-            timeout: 1,          // Detectar fin de turno tras 1 segundo de silencio
+            maxLength: 30,       // Permitir preguntas extensas (hasta 30 segundos por turno)
+            timeout: 3,          // Detectar fin de turno tras 3 segundos de silencio (balance entre fluidez y respuesta ágil)
             playBeep: false,     // Sin pitido
             trim: "trim-silence" // Elimina silencios al inicio/final
         );
@@ -236,7 +236,9 @@ public class VoiceController : ControllerBase
             );
 
         // Descargar la grabación en memoria
-        using var originalStream = await (await _httpClient.SendAsync(request)).Content.ReadAsStreamAsync();
+        using var downloadResponse = await _httpClient.SendAsync(request);
+        var mediaType = downloadResponse.Content.Headers.ContentType?.MediaType ?? "audio/wav";
+        using var originalStream = await downloadResponse.Content.ReadAsStreamAsync();
         using var memoryStream = new MemoryStream();
         await originalStream.CopyToAsync(memoryStream);
         memoryStream.Position = 0;
@@ -245,7 +247,7 @@ public class VoiceController : ControllerBase
 
         // Transcribir con Deepgram
         var timing = Stopwatch.StartNew();
-        var transcript = await _deepgramService.TranscribeFromStreamAsync(memoryStream);
+        var transcript = await _deepgramService.TranscribeFromStreamAsync(memoryStream, mediaType);
         timing.Stop();
         _logger.LogInformation(
             "🎤 Deepgram transcripción completada en {ElapsedMs} ms. Texto: {Transcript}",
