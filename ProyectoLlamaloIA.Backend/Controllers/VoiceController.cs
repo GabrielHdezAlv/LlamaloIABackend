@@ -111,7 +111,7 @@ public class VoiceController : ControllerBase
         {
             var minutes = await GetTwilioMinutesAsync(sidObj.ToString(), tokenObj.ToString());
 
-            // if (minutes >= 30)
+            // //if (minutes >= 30)
             // {
             //     _logger.LogWarning("❌ Usuario ha consumido {Minutes} minutos. No se permite la llamada.", minutes);
             //     response.Say("Ha superado los 30 minutos de llamadas permitidos. No puede realizar esta llamada.", voice: "alice");
