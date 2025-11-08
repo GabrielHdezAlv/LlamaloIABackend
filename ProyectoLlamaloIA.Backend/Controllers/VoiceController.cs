@@ -134,7 +134,9 @@ public class VoiceController : ControllerBase
         response.Append(start);
 
         // 3️⃣ Redirigir a record para escuchar al usuario
-        response.Redirect(new Uri($"/voice/record?To={Uri.EscapeDataString(To)}", UriKind.Relative));
+        var agentId = matchingDoc.Id;
+
+        response.Redirect(new Uri($"/voice/record?To={Uri.EscapeDataString(To)}&agentId={Uri.EscapeDataString(agentId)}", UriKind.Relative));
 
         return Content(response.ToString(), "application/xml");
     }
@@ -172,19 +174,25 @@ public class VoiceController : ControllerBase
     
     // Paso 2: grabar al usuario
     [HttpPost("record")]
-    public IActionResult RecordUser([FromForm] string? To, [FromQuery] string? ToQuery)
+    public IActionResult RecordUser([FromForm] string? To, [FromQuery] string? ToQuery, [FromQuery] string? agentId)
     {
         To ??= ToQuery;
 
         var response = new VoiceResponse();
 
-        var processUrl = new Uri($"/voice/process?To={Uri.EscapeDataString(To)}", UriKind.Relative);
+        var processUrlString = $"/voice/process?To={Uri.EscapeDataString(To)}";
+        if (!string.IsNullOrWhiteSpace(agentId))
+        {
+            processUrlString += $"&agentId={Uri.EscapeDataString(agentId)}";
+        }
+
+        var processUrl = new Uri(processUrlString, UriKind.Relative);
 
         response.Record(
             action: processUrl,
             method: "POST",
-            maxLength: 30,       // Cada turno dura hasta 3 segundos
-            timeout: 1,          // Finaliza si hay 1 segundo de silencio
+            maxLength: 30,       // Cada turno dura hasta 30 segundos
+            timeout: 2,          // Finaliza si hay 2 segundos de silencio
             playBeep: false,     // Sin pitido
             trim: "trim-silence" // Elimina silencios al inicio/final
         );
@@ -194,17 +202,60 @@ public class VoiceController : ControllerBase
     
     // Paso 3: procesar audio y responder
     [HttpPost("process")]
-    public async Task<IActionResult> ProcessUser([FromForm] string RecordingUrl, [FromForm] string? To, [FromQuery] string? ToQuery)
+    public async Task<IActionResult> ProcessUser(
+        [FromForm] string RecordingUrl,
+        [FromForm] string? To,
+        [FromQuery] string? ToQuery,
+        [FromForm] string? agentId,
+        [FromQuery] string? agentIdQuery)
     {
         To ??= ToQuery;
+        agentId ??= agentIdQuery;
         var response = new VoiceResponse();
 
         // Obtener agente
-        var agentsRef = _firestore.Collection("users");
-        var snapshot = await agentsRef.GetSnapshotAsync();
+        if (string.IsNullOrWhiteSpace(To))
+        {
+            _logger.LogError("❌ No se recibió el parámetro 'To' en la solicitud de procesamiento.");
+            response.Say("Ocurrió un error al identificar la llamada.");
+            return Content(response.ToString(), "application/xml");
+        }
 
-        var normalizedTo = NormalizeNumber(To);
-        var matchingDoc = FindAgentByPhone(snapshot.Documents, normalizedTo);
+        string BuildRecordUrl()
+        {
+            var baseUrl = $"/voice/record?To={Uri.EscapeDataString(To)}";
+            if (!string.IsNullOrWhiteSpace(agentId))
+            {
+                baseUrl += $"&agentId={Uri.EscapeDataString(agentId)}";
+            }
+
+            return baseUrl;
+        }
+
+        DocumentSnapshot? matchingDoc = null;
+
+        if (!string.IsNullOrWhiteSpace(agentId))
+        {
+            var agentDocRef = _firestore.Collection("users").Document(agentId);
+            var agentSnapshot = await agentDocRef.GetSnapshotAsync();
+            if (agentSnapshot.Exists)
+            {
+                matchingDoc = agentSnapshot;
+            }
+            else
+            {
+                _logger.LogWarning("⚠️ agentId {AgentId} no encontrado en Firestore. Se intentará buscar por número.", agentId);
+            }
+        }
+
+        if (matchingDoc == null)
+        {
+            var agentsRef = _firestore.Collection("users");
+            var snapshot = await agentsRef.GetSnapshotAsync();
+
+            var normalizedTo = NormalizeNumber(To);
+            matchingDoc = FindAgentByPhone(snapshot.Documents, normalizedTo);
+        }
 
         if (matchingDoc == null)
         {
@@ -278,11 +329,7 @@ public class VoiceController : ControllerBase
             var audUrl = await _firebaseService.UploadAudioAsync(agent.UserId, audStream);
 
             response.Play(new Uri(audUrl));
-            response.Redirect(new Uri("/voice/record", UriKind.Relative));
-            return Content(response.ToString(), "application/xml");
-            
-            response.Say("No pude escucharte claramente. ¿Puedes repetirlo?");
-            response.Redirect(new Uri("/voice/record", UriKind.Relative));
+            response.Redirect(new Uri(BuildRecordUrl(), UriKind.Relative));
             return Content(response.ToString(), "application/xml");
         }
 
@@ -302,7 +349,7 @@ public class VoiceController : ControllerBase
         _logger.LogInformation("📤 Audio subido a Firebase. URL: {AudioUrl}", audioUrl);
 
         response.Play(new Uri(audioUrl));
-        response.Redirect(new Uri("/voice/record", UriKind.Relative));
+        response.Redirect(new Uri(BuildRecordUrl(), UriKind.Relative));
 
         return Content(response.ToString(), "application/xml");
     }
