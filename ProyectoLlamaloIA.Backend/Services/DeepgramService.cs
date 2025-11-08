@@ -97,7 +97,15 @@ public class DeepgramService
 
     public async Task<string> TranscribeFromUrlAsync(string audioUrl)
     {
-        var requestUrl = "https://api.deepgram.com/v1/listen?language=es&punctuate=true&detect_language=false";
+        var requestUrl = "https://api.deepgram.com/v1/listen"
+                         + "?model=nova-2"
+                         + "&language=es"
+                         + "&smart_format=true"
+                         + "&punctuate=true"
+                         + "&utterances=false"
+                         + "&diarize=false"
+                         + "&numerals=true"
+                         + "&endpointing=2000"; // Finaliza palabra tras ~2s de silencio
         var payload = new { url = audioUrl };
         var content = new StringContent(JsonSerializer.Serialize(payload));
         content.Headers.ContentType = new MediaTypeHeaderValue("application/json");

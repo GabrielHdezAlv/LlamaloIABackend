@@ -185,7 +185,7 @@ public class VoiceController : ControllerBase
             action: processUrl,
             method: "POST",
             maxLength: 30,       // Permitir preguntas extensas (hasta 30 segundos por turno)
-            timeout: 3,          // Detectar fin de turno tras 3 segundos de silencio (balance entre fluidez y respuesta ágil)
+            timeout: 2.5,          // Detectar fin de turno tras ~2.5 segundos de silencio
             playBeep: false,     // Sin pitido
             trim: "trim-silence" // Elimina silencios al inicio/final
         );

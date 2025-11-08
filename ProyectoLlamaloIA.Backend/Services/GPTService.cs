@@ -27,9 +27,11 @@ public class GPTService
             model = "ft:gpt-3.5-turbo-1106:llamalo:llamalo-ai-beta-v1:BJ0wvqjK",
             messages = new[]
             {
+                new { role = "system", content = "Eres un agente virtual de atención telefónica. Responde de forma breve, directa y basada únicamente en la información del usuario; si no tienes datos suficientes, reconoce la limitación y pide aclaraciones. Evita inventar detalles." },
                 new { role = "user", content = userInput }
             },
-            temperature = 0.7,
+            temperature = 0.2,
+            max_tokens = 300,
             stream = true
         };
 
@@ -82,9 +84,11 @@ public class GPTService
             model = "ft:gpt-3.5-turbo-1106:llamalo:llamalo-ai-beta-v1:BJ0wvqjK",
             messages = new[]
             {
+                new { role = "system", content = "Eres un agente virtual de atención telefónica. Responde de forma breve, directa y basada únicamente en la información del usuario; si no tienes datos suficientes, reconoce la limitación y pide aclaraciones. Evita inventar detalles." },
                 new { role = "user", content = userInput }
             },
-            temperature = 0.7
+            temperature = 0.2,
+            max_tokens = 300
         };
 
         var jsonContent = new StringContent(
