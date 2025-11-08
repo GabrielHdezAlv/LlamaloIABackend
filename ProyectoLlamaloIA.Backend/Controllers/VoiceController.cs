@@ -95,12 +95,12 @@ public class VoiceController : ControllerBase
             var createdAt = createdAtTimestamp.ToDateTime();
             var accountAge = DateTime.UtcNow - createdAt;
 
-            if (accountAge.TotalDays >= 7)
-            {
-                _logger.LogWarning("❌ Cuenta con {Days} días de antigüedad. No se permite la llamada.", accountAge.TotalDays);
-                response.Say("Su cuenta tiene más de 7 días de antigüedad. No puede realizar esta llamada.", voice: "alice");
-                return Content(response.ToString(), "application/xml");
-            }
+            // if (accountAge.TotalDays >= 7)
+            // {
+            //     _logger.LogWarning("❌ Cuenta con {Days} días de antigüedad. No se permite la llamada.", accountAge.TotalDays);
+            //     response.Say("Su cuenta tiene más de 7 días de antigüedad. No puede realizar esta llamada.", voice: "alice");
+            //     return Content(response.ToString(), "application/xml");
+            // }
         }
 
         // ✅ Validar minutos consumidos
