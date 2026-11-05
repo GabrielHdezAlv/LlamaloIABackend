@@ -29,7 +29,9 @@ if (!string.IsNullOrWhiteSpace(credentialsJson))
 else
 {
     // 👉 Estamos en local
-    credentialPath = Path.Combine(Directory.GetCurrentDirectory(), "llamaloio-firebase-adminsdk-fbsvc-2884e73711.json");
+    credentialPath = builder.Configuration["Firebase:CredentialsFile"]
+        ?? Environment.GetEnvironmentVariable("GOOGLE_APPLICATION_CREDENTIALS")
+        ?? Path.Combine(Directory.GetCurrentDirectory(), "firebase-adminsdk.json");
 
     if (!File.Exists(credentialPath))
     {

@@ -1,3 +1,0 @@
-﻿<Project>
-  <Import Project="../build/ProyectoLlamaloIA.Backend.props" />
-</Project>
