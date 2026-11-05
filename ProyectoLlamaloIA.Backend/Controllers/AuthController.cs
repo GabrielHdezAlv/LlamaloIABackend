@@ -18,7 +18,8 @@ public class AuthController : ControllerBase
     private readonly UserRepository _userRepository;
     private readonly FirestoreDb _firestoreDb;
     private readonly IConfiguration _configuration;
-    private const string FirebaseApiKey = "AIzaSyBeDYuVYfL9Multc9cOkXsk7lsL6t-YOUQ";
+    private string FirebaseApiKey => _configuration["Firebase:ApiKey"]
+        ?? throw new InvalidOperationException("Falta Firebase:ApiKey en configuración");
     
     public AuthController(UserRepository userRepository, FirestoreDb firestoreDb, IConfiguration configuration)
     {
